@@ -31,9 +31,12 @@ namespace PackageDelivery.Api.Controllers
             _createDeliveryService = createDeliveryService ?? throw new ArgumentNullException(nameof(createDeliveryService));
         }
 
+        /// <summary>Lists the authenticated user's deliveries, most recent first.</summary>
+        /// <response code="200">The user's deliveries. Empty array when there are none.</response>
+        /// <response code="401">Missing or invalid bearer token.</response>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<GetDeliveryModel>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<GetDeliveryModel>>> GetMyDeliveries(CancellationToken cancellationToken)
         {
             var deliveries = await _getDeliveriesService.GetUserDeliveriesAsync(CurrentUserId, cancellationToken);
@@ -41,10 +44,18 @@ namespace PackageDelivery.Api.Controllers
             return Ok(deliveries);
         }
 
+        /// <summary>Creates a delivery for the authenticated user.</summary>
+        /// <remarks>
+        /// Validates the request, generates a 15-digit barcode and one package per volume,
+        /// and records the initial "created" event.
+        /// </remarks>
+        /// <response code="200">Delivery created. The response carries the generated barcode.</response>
+        /// <response code="401">Missing or invalid bearer token.</response>
+        /// <response code="422">Validation failed. The response lists the error messages in <c>errors</c>.</response>
         [HttpPost]
         [ProducesResponseType(typeof(CreateDeliveryResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(CreateDeliveryResponse), StatusCodes.Status422UnprocessableEntity)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<CreateDeliveryResponse>> CreateDelivery(
             [FromBody] CreateDeliveryRequest request,
             CancellationToken cancellationToken)

@@ -17,6 +17,11 @@ namespace PackageDelivery.Api.Configuration
             {
                 c.SwaggerDoc(openApiInfo.Version, openApiInfo);
 
+                foreach (var xmlDoc in Directory.GetFiles(AppContext.BaseDirectory, "PackageDelivery.*.xml"))
+                    c.IncludeXmlComments(xmlDoc, includeControllerXmlComments: true);
+
+                c.SupportNonNullableReferenceTypes();
+
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",

@@ -22,6 +22,8 @@ namespace PackageDelivery.Api.Configuration
 
                 c.SupportNonNullableReferenceTypes();
 
+                c.OperationFilter<CreateDeliveryResponseExamples>();
+
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",

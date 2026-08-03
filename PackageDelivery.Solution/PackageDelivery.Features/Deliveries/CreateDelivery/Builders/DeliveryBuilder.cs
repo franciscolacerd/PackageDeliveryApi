@@ -1,7 +1,7 @@
-using System.Text;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Models;
 using PackageDelivery.Infrastructure.Entities;
 using PackageDelivery.Infrastructure.Enums;
+using PackageDelivery.Shared.Extensions;
 
 namespace PackageDelivery.Features.Deliveries.CreateDelivery.Builders
 {
@@ -68,13 +68,12 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Builders
         {
             var now = DateTime.UtcNow;
 
-            _delivery.Status = "Created";
-            _delivery.BarCode = GenerateBarCode();
+            _delivery.BarCode = BarCodeLength.ToRandomStringOfInts();
             _delivery.CreatedDate = DateTime.Now;
             _delivery.CreatedDateUtc = now;
 
             AddPackages(now);
-            AddCreatedEvent(now);
+            AddCreatedInSystemEvent(now);
 
             return _delivery;
         }
@@ -90,7 +89,7 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Builders
             });
         }
 
-        private void AddCreatedEvent(DateTime createdDateUtc)
+        private void AddCreatedInSystemEvent(DateTime createdDateUtc)
         {
             _delivery.Events.Add(new Event
             {
@@ -115,16 +114,6 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Builders
                     CreatedDateUtc = createdDateUtc
                 });
             }
-        }
-
-        private static string GenerateBarCode()
-        {
-            var builder = new StringBuilder(BarCodeLength);
-
-            for (var i = 0; i < BarCodeLength; i++)
-                builder.Append(Random.Shared.Next(0, 10));
-
-            return builder.ToString();
         }
     }
 }

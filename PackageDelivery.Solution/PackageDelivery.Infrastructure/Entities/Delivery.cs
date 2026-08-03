@@ -56,8 +56,6 @@ public partial class Delivery
 
     public string? ReceiverAddressCountryCode { get; set; }
 
-    public string Status { get; set; } = "Created";
-
     public string? CreatedBy { get; set; }
 
     public DateTime CreatedDate { get; set; }

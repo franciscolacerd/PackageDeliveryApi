@@ -33,8 +33,9 @@ jobs:
       - name: Build
         run: dotnet build PackageDelivery.Solution.slnx -c Release --no-restore --nologo
 
-      # Only the validator unit tests run in CI. Integration tests (SQL Server) and
-      # end-to-end tests (running API) need external resources that CI does not provide.
+      # Only the validator unit tests run in CI. Integration tests (SQL Server)
+      # and end-to-end tests (running API) need external resources that CI does
+      # not provide.
       - name: Unit tests
         run: >
           dotnet test

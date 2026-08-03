@@ -25,7 +25,6 @@ namespace PackageDelivery.Features.Deliveries.GetDeliveries.Repositories
                     BarCode = d.BarCode,
                     SenderName = d.SenderName,
                     ReceiverName = d.ReceiverName,
-                    Status = d.Status,
                     NumberOfVolumes = d.NumberOfVolumes,
                     TotalWeightOfVolumes = d.TotalWeightOfVolumes,
                     CreatedDateUtc = d.CreatedDateUtc

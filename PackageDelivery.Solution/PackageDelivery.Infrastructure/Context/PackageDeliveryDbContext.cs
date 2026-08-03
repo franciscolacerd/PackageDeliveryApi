@@ -110,7 +110,6 @@ public partial class PackageDeliveryDbContext : IdentityDbContext<
             entity.HasIndex(e => e.UserId, "IX_Deliveries_UserId");
 
             entity.Property(e => e.BarCode).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
             entity.Property(e => e.ClientReference).HasMaxLength(50);
             entity.Property(e => e.TotalWeightOfVolumes).HasColumnType("decimal(18,3)");
             entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");

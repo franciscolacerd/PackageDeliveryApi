@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: preview
+
+      - name: Restore
+        run: dotnet restore PackageDelivery.Solution.slnx
+
+      - name: Build
+        run: dotnet build PackageDelivery.Solution.slnx -c Release --no-restore --nologo
+
+      # Only the validator unit tests run in CI. Integration tests (SQL Server) and
+      # end-to-end tests (running API) need external resources that CI does not provide.
+      - name: Unit tests
+        run: >
+          dotnet test
+          PackageDelivery.Solution/PackageDelivery.Features.Tests/PackageDelivery.Features.Tests.csproj
+          --filter "FullyQualifiedName~Validator"
+          --no-build -c Release --nologo

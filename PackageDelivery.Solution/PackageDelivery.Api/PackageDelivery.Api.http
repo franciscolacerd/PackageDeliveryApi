@@ -1,24 +1,47 @@
 @PackageDelivery.Api_HostAddress = http://localhost:5280
 
-### Login (obter JWT)
+### Login (get JWT)
 POST {{PackageDelivery.Api_HostAddress}}/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=password&username=cliente@exemplo.pt&password=Password1!
+grant_type=password&username=customer@example.com&password=Password1!
 
 ### Refresh token
 POST {{PackageDelivery.Api_HostAddress}}/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=refresh_token&refresh_token=COLOCAR_REFRESH_TOKEN
+grant_type=refresh_token&refresh_token=PUT_REFRESH_TOKEN_HERE
 
-### Entregas do utilizador autenticado
+### Create a delivery
+POST {{PackageDelivery.Api_HostAddress}}/api/deliveries
+Authorization: Bearer PUT_ACCESS_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "details": {
+    "clientReference": "REF-001",
+    "numberOfVolumes": 2,
+    "totalWeightOfVolumes": 4.5,
+    "amount": null,
+    "instructions": "Leave at the front desk",
+    "preferentialPeriod": "09:00-13:00"
+  },
+  "sender": {
+    "name": "Acme Warehouse",
+    "contact": { "name": "John Sender", "phoneNumber": "912345678", "email": "sender@example.com" },
+    "address": { "addressLine": "Rua A, 1", "place": "Lisboa", "zipCode": "1000-001", "zipCodePlace": "Lisboa", "countryCode": "PT" }
+  },
+  "receiver": {
+    "name": "Jane Receiver",
+    "contact": { "name": "Jane Receiver", "phoneNumber": "913333444", "email": "receiver@example.com" },
+    "address": { "addressLine": "Rua B, 2", "place": "Porto", "zipCode": "4000-002", "zipCodePlace": "Porto", "countryCode": "PT" }
+  },
+  "attributes": { "pod": true, "sameDay": false, "cashOnDelivery": false }
+}
+
+### Authenticated user's deliveries
 GET {{PackageDelivery.Api_HostAddress}}/api/deliveries
-Authorization: Bearer COLOCAR_ACCESS_TOKEN
-Accept: application/json
-
-### Versao da app (publico)
-GET {{PackageDelivery.Api_HostAddress}}/api/app/version
+Authorization: Bearer PUT_ACCESS_TOKEN_HERE
 Accept: application/json
 
 ###

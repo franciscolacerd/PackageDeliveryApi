@@ -1,39 +1,53 @@
 # PackageDelivery API
 
-Boilerplate de API .NET 10 em **vertical slice architecture**, gerado a partir do template do projecto `Tibi - Api` mas adaptado ao contexto **PackageDelivery**. Acesso a dados **100% Entity Framework Core** (sem Dapper).
+A .NET 10 Web API for managing package deliveries, built with a **vertical slice architecture**: each feature owns its models, validation, persistence and services.
 
-## Camadas (7 projectos)
+## Projects
 
-| Projecto | Papel |
-|----------|-------|
-| **PackageDelivery.Api** | Host web: Controllers, Configuration, Middleware, `Program.cs` |
-| **PackageDelivery.Features** | Vertical slices (`Models`/`Repositories`/`Services` por feature) |
-| **PackageDelivery.Infrastructure** | EF Core `DbContext`, entidades, Identity, factories |
-| **PackageDelivery.Shared** | OperationResponse, Policies, BaseService, TokenProviderOptions, exceptions |
-| **PackageDelivery.Api.Tests** | Testes end-to-end (HttpClient) — NUnit |
-| **PackageDelivery.Features.Tests** | Testes de integração dos serviços — NUnit |
-| **PackageDelivery.Infrastructure.Tests** | Testes de integração de persistência — NUnit |
+| Project | Responsibility |
+|---------|----------------|
+| **PackageDelivery.Api** | Web host: controllers, configuration, middleware, `Program.cs` |
+| **PackageDelivery.Features** | Feature slices — one folder per operation (`Models` / `Validators` / `Builders` / `Repositories` / `Services`) |
+| **PackageDelivery.Infrastructure** | EF Core `DbContext`, entities and ASP.NET Core Identity |
+| **PackageDelivery.Shared** | Cross-cutting building blocks (response models, policies, token options, exceptions) |
+| **PackageDelivery.Api.Tests** | End-to-end tests (HttpClient) — NUnit |
+| **PackageDelivery.Features.Tests** | Feature/service integration tests — NUnit |
+| **PackageDelivery.Infrastructure.Tests** | Persistence integration tests — NUnit |
 
-## Stack / NuGets
+## Stack
 
-- **EF Core 10** + SQL Server (`Microsoft.EntityFrameworkCore.SqlServer`)
-- **ASP.NET Core Identity** (`AspNetUser : IdentityUser<long>`) + JWT Bearer + refresh token
-- **FluentValidation** 12
-- **Serilog** (ficheiro, rotação diária, 7 dias) em `C:/Logs/PackageDelivery.Api/`
-- **HealthChecks** (`/health`, `/Healthz`) — SQL, DbContext, Swagger, disco
-- **Rate limiting** (fixed / token bucket / per-ip)
-- **NWebsec** (headers de segurança), CORS, Polly (retry com jitter)
-- Swagger / OpenAPI
+- **Entity Framework Core 10** + SQL Server (single `PackageDeliveryDbContext`)
+- **ASP.NET Core Identity** (`AspNetUser : IdentityUser<long>`) with JWT bearer authentication and refresh tokens
+- **FluentValidation** for request validation
+- **Serilog** (rolling file, configured in `appsettings.json`)
+- **Health checks** (`/health`, `/Healthz`)
+- **Rate limiting** (fixed window, token bucket, per-IP)
+- Security headers, CORS and Swagger / OpenAPI
 
-> Observabilidade (métricas / OpenTelemetry) foi deliberadamente deixada de fora — será tratada mais tarde de outra forma.
+## Endpoints
 
-## Funcionalidades incluídas
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/token` | Authenticate (`grant_type=password`) or renew (`grant_type=refresh_token`) — returns a JWT |
+| `POST` | `/api/deliveries` | Create a delivery (validates the request, generates a barcode and one package per volume) |
+| `GET`  | `/api/deliveries` | List the authenticated user's deliveries |
 
-- **Auth**: `POST /token` (`grant_type=password` e `refresh_token`) → JWT
-- **DeliveriesController**: `GET /api/deliveries` — slice de exemplo `Deliveries/GetDeliveries` (entregas do utilizador autenticado, via EF Core). Controller com DI normal a chamar o serviço da feature.
-- **Logging de request/response**: gravado **de imediato na BD** (tabela `ApiRestLogs`, BD de logging) pelo `RequestResponseLoggingMiddleware` — sem fila nem background service
+See `PackageDelivery.Solution/PackageDelivery.Api/PackageDelivery.Api.http` for ready-to-run requests.
 
-## Comandos
+## Feature slices
+
+Each feature under `PackageDelivery.Features/Deliveries` is self-contained:
+
+- **CreateDelivery** — `Models` (request/response), `Validators` (FluentValidation), `Builders` (`DeliveryBuilder` assembles the `Delivery` aggregate and its packages), `Repositories`, `Services`.
+- **GetDeliveries** — `Models` (read model), `Repositories`, `Services`.
+
+Controllers depend directly on the feature services; there is no shared/generic repository.
+
+## Request/response logging
+
+`RequestResponseLoggingMiddleware` writes each request/response to the `ApiRestLogs` table synchronously, using the same `PackageDeliveryDbContext`.
+
+## Commands
 
 ```bash
 dotnet build PackageDelivery.Solution.slnx
@@ -41,14 +55,19 @@ dotnet run --project PackageDelivery.Solution/PackageDelivery.Api
 dotnet test PackageDelivery.Solution.slnx
 ```
 
-## Base de dados (EF Core migrations)
+## Database (EF Core migrations)
 
-Configurar a connection string `PackageDeliveryConnection` em
-`PackageDelivery.Api/appsettings.json`. Depois:
+The `InitialCreate` migration is already included (it creates the Identity, delivery and logging tables and seeds the `EventTypes` and `DeliveryAttributes` lookups).
+
+Set the `PackageDeliveryConnection` connection string in
+`PackageDelivery.Solution/PackageDelivery.Api/appsettings.json` and replace the JWT `SecretKey`, then apply the migration:
 
 ```bash
-dotnet ef migrations add InitialCreate --context PackageDeliveryDbContext --project PackageDelivery.Solution/PackageDelivery.Infrastructure --startup-project PackageDelivery.Solution/PackageDelivery.Api
 dotnet ef database update --context PackageDeliveryDbContext --project PackageDelivery.Solution/PackageDelivery.Infrastructure --startup-project PackageDelivery.Solution/PackageDelivery.Api
 ```
 
-> **Nota:** o boilerplate ainda não inclui migrations — as entidades (`AspNet*`, `Delivery`, `ApiRestLog`) estão todas mapeadas no `PackageDeliveryDbContext` (context único) prontas para gerar a primeira migration. Substituir a `SecretKey` do JWT e a connection string antes de usar.
+To create further migrations after changing the model:
+
+```bash
+dotnet ef migrations add <Name> --context PackageDeliveryDbContext --project PackageDelivery.Solution/PackageDelivery.Infrastructure --startup-project PackageDelivery.Solution/PackageDelivery.Api
+```

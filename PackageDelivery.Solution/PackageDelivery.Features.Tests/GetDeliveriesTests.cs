@@ -8,13 +8,13 @@ namespace PackageDelivery.Features.Tests
     public class GetDeliveriesTests
     {
         private ServiceProvider _serviceProvider;
-        private IDeliveryService _deliveryService;
+        private IGetDeliveriesService _deliveryService;
 
         [SetUp]
         public void Setup()
         {
             _serviceProvider = Bootstrapper.Bind();
-            _deliveryService = _serviceProvider.GetRequiredService<IDeliveryService>();
+            _deliveryService = _serviceProvider.GetRequiredService<IGetDeliveriesService>();
         }
 
         [TearDown]

@@ -4,11 +4,11 @@ using PackageDelivery.Infrastructure.Context;
 
 namespace PackageDelivery.Features.Deliveries.GetDeliveries.Repositories
 {
-    public class DeliveryRepository : IDeliveryRepository
+    public class GetDeliveriesRepository : IGetDeliveriesRepository
     {
         private readonly PackageDeliveryDbContext _context;
 
-        public DeliveryRepository(PackageDeliveryDbContext context)
+        public GetDeliveriesRepository(PackageDeliveryDbContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
@@ -27,7 +27,7 @@ namespace PackageDelivery.Features.Deliveries.GetDeliveries.Repositories
                     ReceiverName = d.ReceiverName,
                     Status = d.Status,
                     NumberOfVolumes = d.NumberOfVolumes,
-                    TotalWeight = d.TotalWeight,
+                    TotalWeightOfVolumes = d.TotalWeightOfVolumes,
                     CreatedDateUtc = d.CreatedDateUtc
                 })
                 .ToListAsync(cancellationToken);

@@ -1,0 +1,24 @@
+@PackageDelivery.Api_HostAddress = http://localhost:5280
+
+### Login (obter JWT)
+POST {{PackageDelivery.Api_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&username=cliente@exemplo.pt&password=Password1!
+
+### Refresh token
+POST {{PackageDelivery.Api_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&refresh_token=COLOCAR_REFRESH_TOKEN
+
+### Entregas do utilizador autenticado
+GET {{PackageDelivery.Api_HostAddress}}/api/deliveries
+Authorization: Bearer COLOCAR_ACCESS_TOKEN
+Accept: application/json
+
+### Versao da app (publico)
+GET {{PackageDelivery.Api_HostAddress}}/api/app/version
+Accept: application/json
+
+###

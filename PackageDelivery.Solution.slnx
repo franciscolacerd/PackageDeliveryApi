@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/PackageDelivery.Solution/">
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Api/PackageDelivery.Api.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Api.Tests/PackageDelivery.Api.Tests.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Features/PackageDelivery.Features.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Features.Tests/PackageDelivery.Features.Tests.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Infrastructure/PackageDelivery.Infrastructure.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Infrastructure.Tests/PackageDelivery.Infrastructure.Tests.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.Shared/PackageDelivery.Shared.csproj" />
+  </Folder>
+</Solution>

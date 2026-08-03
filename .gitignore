@@ -1,0 +1,15 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+## Rider
+.idea/
+
+## Local config (nao versionar segredos)
+appsettings.*.local.json

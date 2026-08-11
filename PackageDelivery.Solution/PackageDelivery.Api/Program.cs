@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Options;
-using Serilog;
-using System.Text.Json;
 using PackageDelivery.Api.Configuration;
 using PackageDelivery.Api.Middleware;
 using PackageDelivery.Features;
 using PackageDelivery.Infrastructure;
 using PackageDelivery.Infrastructure.Context;
 using PackageDelivery.Shared.Models;
+using Serilog;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +14,7 @@ builder.AddConfiguration();
 
 var tokenProviderOptions = Authentication.AddAuthentication(builder.Services, builder.Configuration);
 
-builder.Services.AddPackageDeliveryServices();
+builder.Services.AddPackageDeliveryServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddCorsPolicies(builder.Configuration);
 builder.Services.AddRateLimiting(builder.Configuration);

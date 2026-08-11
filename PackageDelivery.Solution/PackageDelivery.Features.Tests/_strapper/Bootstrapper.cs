@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using PackageDelivery.Features;
 using PackageDelivery.Infrastructure;
 
 namespace PackageDelivery.Features.Tests._strapper
@@ -25,7 +24,7 @@ namespace PackageDelivery.Features.Tests._strapper
 
             var configurationRoot = GetIConfigurationRoot(TestContext.CurrentContext.TestDirectory);
 
-            services.AddPackageDeliveryServices();
+            services.AddPackageDeliveryServices(configurationRoot);
             services.AddInfrastructureServices(configurationRoot);
 
             services.AddSingleton<IConfiguration>(configurationRoot);

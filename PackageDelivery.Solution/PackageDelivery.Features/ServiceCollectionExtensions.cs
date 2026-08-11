@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Models;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Repositories;
@@ -6,6 +7,7 @@ using PackageDelivery.Features.Deliveries.CreateDelivery.Services;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Validators;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Repositories;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Services;
+using PackageDelivery.Shared.Settings;
 
 namespace PackageDelivery.Features
 {
@@ -26,8 +28,10 @@ namespace PackageDelivery.Features
             return services;
         }
 
-        public static IServiceCollection AddPackageDeliveryServices(this IServiceCollection services)
+        public static IServiceCollection AddPackageDeliveryServices(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<PagingSettings>(configuration.GetSection("PagingSettings"));
+
             services.AddHttpContextAccessor();
 
             services.AddGetDeliveriesFeature();

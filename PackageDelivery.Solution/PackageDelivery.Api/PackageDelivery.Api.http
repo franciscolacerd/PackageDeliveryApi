@@ -39,8 +39,8 @@ Content-Type: application/json
   "attributes": { "pod": true, "sameDay": false, "cashOnDelivery": false }
 }
 
-### Authenticated user's deliveries
-GET {{PackageDelivery.Api_HostAddress}}/api/deliveries
+### Authenticated user's deliveries (paginated)
+GET {{PackageDelivery.Api_HostAddress}}/api/deliveries?page=1&pageSize=20
 Authorization: Bearer PUT_ACCESS_TOKEN_HERE
 Accept: application/json
 

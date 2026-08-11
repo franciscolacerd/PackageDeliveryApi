@@ -30,7 +30,7 @@ A .NET 10 Web API for managing package deliveries, built with a **vertical slice
 |--------|-------|-------------|
 | `POST` | `/token` | Authenticate (`grant_type=password`) or renew (`grant_type=refresh_token`) — returns a JWT |
 | `POST` | `/api/deliveries` | Create a delivery (validates the request, generates a barcode and one package per volume) |
-| `GET`  | `/api/deliveries` | List the authenticated user's deliveries |
+| `GET`  | `/api/deliveries` | List the authenticated user's deliveries, paginated (`?page=1&pageSize=20`) — returns a `PagedResult` (`items` plus `page`, `pageSize`, `totalCount`, `totalPages`, `hasPrevious`, `hasNext`) |
 
 See `PackageDelivery.Solution/PackageDelivery.Api/PackageDelivery.Api.http` for ready-to-run requests.
 

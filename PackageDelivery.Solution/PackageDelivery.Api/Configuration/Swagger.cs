@@ -9,8 +9,8 @@ namespace PackageDelivery.Api.Configuration
             var openApiInfo = new OpenApiInfo
             {
                 Version = "v1",
-                Title = "PackageDelivery.Api",
-                Description = "API de gestao de entregas de encomendas (package delivery)."
+                Title = "PackageDelivery API",
+                Description = "API for managing package deliveries."
             };
 
             services.AddSwaggerGen(c =>

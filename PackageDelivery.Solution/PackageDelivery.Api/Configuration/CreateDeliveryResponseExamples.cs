@@ -1,7 +1,7 @@
-using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
 using PackageDelivery.Api.Controllers;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Text.Json.Nodes;
 
 namespace PackageDelivery.Api.Configuration
 {
@@ -9,7 +9,7 @@ namespace PackageDelivery.Api.Configuration
     {
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (context.MethodInfo.Name != nameof(DeliveriesController.CreateDelivery) || operation.Responses is null)
+            if (context.MethodInfo.Name != nameof(DeliveriesController.CreateDeliveryAsync) || operation.Responses is null)
                 return;
 
             SetJsonExample(operation, "200", new JsonObject

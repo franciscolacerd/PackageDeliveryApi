@@ -51,11 +51,46 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
             var created = await _createService.CreateAsync(ValidRequest(), userId);
             _createdBarCodes.Add(created.BarCode!);
 
-            var result = (await _service.GetUserDeliveriesAsync(userId)).ToList();
+            var result = await _service.GetUserDeliveriesAsync(userId, 1, 20);
 
-            result.Should().ContainSingle();
-            result[0].BarCode.Should().Be(created.BarCode);
-            result[0].NumberOfVolumes.Should().Be(2);
+            var items = result.Items;
+
+            items.Should().ContainSingle();
+            items[0].BarCode.Should().Be(created.BarCode);
+            items[0].NumberOfVolumes.Should().Be(2);
+
+            result.TotalCount.Should().Be(1);
+            result.Page.Should().Be(1);
+            result.PageSize.Should().Be(20);
+            result.TotalPages.Should().Be(1);
+            result.HasPrevious.Should().BeFalse();
+            result.HasNext.Should().BeFalse();
+        }
+
+        [Test]
+        public async Task GetUserDeliveriesAsync_paginates_when_there_is_more_than_one_page()
+        {
+            var userId = Random.Shared.NextInt64(1_000_000_000, long.MaxValue);
+
+            for (var i = 0; i < 3; i++)
+            {
+                var created = await _createService.CreateAsync(ValidRequest(), userId);
+                _createdBarCodes.Add(created.BarCode!);
+            }
+
+            var firstPage = await _service.GetUserDeliveriesAsync(userId, 1, 2);
+
+            firstPage.Items.Should().HaveCount(2);
+            firstPage.TotalCount.Should().Be(3);
+            firstPage.TotalPages.Should().Be(2);
+            firstPage.HasPrevious.Should().BeFalse();
+            firstPage.HasNext.Should().BeTrue();
+
+            var secondPage = await _service.GetUserDeliveriesAsync(userId, 2, 2);
+
+            secondPage.Items.Should().ContainSingle();
+            secondPage.HasPrevious.Should().BeTrue();
+            secondPage.HasNext.Should().BeFalse();
         }
 
         [Test]
@@ -63,10 +98,10 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
         {
             var userId = Random.Shared.NextInt64(1_000_000_000, long.MaxValue);
 
-            var result = await _service.GetUserDeliveriesAsync(userId);
+            var result = await _service.GetUserDeliveriesAsync(userId, 1, 20);
 
             result.Should().NotBeNull();
-            result.Should().BeEmpty();
+            result.Items.Should().BeEmpty();
         }
 
         private static DeliveryParty ValidParty(string name) => new()

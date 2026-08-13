@@ -80,7 +80,7 @@ docker compose up --build
 ### .NET Aspire
 
 ```bash
-dotnet run --project PackageDelivery.AppHost
+dotnet run --project PackageDelivery.Solution/PackageDelivery.AppHost
 ```
 
 The AppHost provisions SQL Server in a container, injects the `PackageDeliveryConnection` string into the API, sets `RunMigrations=true` and opens the Aspire dashboard. The API references `PackageDelivery.ServiceDefaults` (OpenTelemetry, health, service discovery, resilience). `PackageDelivery.AppHost` needs the `Aspire.Hosting.SqlServer` package for `AddSqlServer`/`AddDatabase`.

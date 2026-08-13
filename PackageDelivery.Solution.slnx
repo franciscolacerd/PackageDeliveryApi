@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/PackageDelivery.Solution/">
-    <Project Path="PackageDelivery.AppHost/PackageDelivery.AppHost.csproj" Id="8653bcc9-af7f-4f8b-9fa1-9ee9a34fac78" />
-    <Project Path="PackageDelivery.ServiceDefaults/PackageDelivery.ServiceDefaults.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.AppHost/PackageDelivery.AppHost.csproj" Id="8653bcc9-af7f-4f8b-9fa1-9ee9a34fac78" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.ServiceDefaults/PackageDelivery.ServiceDefaults.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Api.Tests/PackageDelivery.Api.Tests.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Api/PackageDelivery.Api.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Features.Tests/PackageDelivery.Features.Tests.csproj" />

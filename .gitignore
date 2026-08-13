@@ -13,3 +13,7 @@ artifacts/
 
 ## Local config (nao versionar segredos)
 appsettings.*.local.json
+.env
+
+## Docker (logs montados do container)
+logs/

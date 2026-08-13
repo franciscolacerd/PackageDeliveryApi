@@ -55,11 +55,49 @@ dotnet run --project PackageDelivery.Solution/PackageDelivery.Api
 dotnet test PackageDelivery.Solution.slnx
 ```
 
+## Containerization
+
+The API ships as a Linux container. There are two ways to run it, **both reusing the same `Dockerfile`** — they are complementary, not alternatives:
+
+| Way | When | Needs .NET SDK? |
+|-----|------|-----------------|
+| **docker-compose** (`docker-compose.yml`) | Run anywhere with just Docker — colleagues, CI, demos, servers | No |
+| **.NET Aspire** (`PackageDelivery.AppHost`) | Dev inner-loop: dashboard (traces/logs/metrics/health) + automatic connection-string wiring | Yes |
+
+The `Dockerfile` is the common base — compose consumes the image, and Aspire builds it under the hood.
+
+Migrations are applied **automatically on startup when `RunMigrations=true`** (set by both compose and Aspire); otherwise the app never touches the schema (see *Database* below).
+
+### docker-compose (API + SQL Server)
+
+```bash
+docker compose up --build
+```
+
+- API → `http://localhost:8080` (Swagger at `/swagger`); SQL Server → `localhost:1433`.
+- Configuration is overridden through environment variables (connection string, `BaseUrl__Uri`, Serilog output path, `RunMigrations`) so the container never reads the Windows-oriented defaults from `appsettings.json`.
+
+### .NET Aspire
+
+```bash
+dotnet run --project PackageDelivery.AppHost
+```
+
+The AppHost provisions SQL Server in a container, injects the `PackageDeliveryConnection` string into the API, sets `RunMigrations=true` and opens the Aspire dashboard. The API references `PackageDelivery.ServiceDefaults` (OpenTelemetry, health, service discovery, resilience). `PackageDelivery.AppHost` needs the `Aspire.Hosting.SqlServer` package for `AddSqlServer`/`AddDatabase`.
+
+The `api` resource uses `WaitFor(sql)`, so it starts only once SQL Server is healthy. On the **first run** the SQL Server image (~2.3 GB) is pulled, which can take a few minutes — pre-pull it to make startup deterministic:
+
+```bash
+docker pull mcr.microsoft.com/mssql/server:2022-latest
+```
+
+> The `C:\`-drive disk-storage health check runs on Windows only, so the container reports healthy on Linux.
+
 ## Database (EF Core migrations)
 
 The `InitialCreate` migration is already included (it creates the Identity, delivery and logging tables and seeds the `EventTypes` and `DeliveryAttributes` lookups).
 
-Set the `PackageDeliveryConnection` connection string in
+In containers/Aspire the migration is applied automatically at startup (`RunMigrations=true`). To run it by hand instead, set the `PackageDeliveryConnection` connection string in
 `PackageDelivery.Solution/PackageDelivery.Api/appsettings.json` and replace the JWT `SecretKey`, then apply the migration:
 
 ```bash

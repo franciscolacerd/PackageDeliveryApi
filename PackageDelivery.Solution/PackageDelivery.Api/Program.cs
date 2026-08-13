@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PackageDelivery.Api.Configuration;
 using PackageDelivery.Api.Middleware;
@@ -9,6 +10,8 @@ using Serilog;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 builder.AddConfiguration();
 
@@ -26,13 +29,20 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration));
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.UseHealthChecks<PackageDeliveryDbContext>();
+builder.Services.UseHealthChecks<PackageDeliveryDbContext>(builder.Configuration);
 builder.Services.AddSwagger();
 builder.Services.AddSecurity();
 
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+if (app.Configuration.GetValue<bool>("RunMigrations"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PackageDeliveryDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

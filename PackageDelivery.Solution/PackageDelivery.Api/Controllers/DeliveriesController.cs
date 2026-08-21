@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PackageDelivery.Api.Configuration;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Models;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Services;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Models;
@@ -15,7 +16,7 @@ namespace PackageDelivery.Api.Controllers
     [ApiController]
     [Route("api/deliveries")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimiting.Authenticated)]
     [EnableCors(Policies.CorsPolicy)]
     [Produces("application/json")]
     public class DeliveriesController : ControllerBase

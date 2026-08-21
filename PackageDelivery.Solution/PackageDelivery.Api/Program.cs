@@ -55,10 +55,10 @@ app.UseSwaggerUIConfig();
 app.UseApiLoggingMiddleware();
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseRateLimiter();
 app.UseCors(Policies.CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.UseMiddleware<TokenProviderMiddleware>(Options.Create(tokenProviderOptions));
 
 app.UseExceptionMiddleware();

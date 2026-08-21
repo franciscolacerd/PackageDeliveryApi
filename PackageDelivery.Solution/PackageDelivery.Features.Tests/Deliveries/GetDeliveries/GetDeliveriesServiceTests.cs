@@ -51,6 +51,22 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
             var created = await _createService.CreateAsync(ValidRequest(), userId);
             _createdBarCodes.Add(created.BarCode!);
 
+            created.Success.Should().BeTrue();
+
+            var persistedUserId = await _context.Deliveries
+                .AsNoTracking()
+                .Where(d => d.BarCode == created.BarCode)
+                .Select(d => (long?)d.UserId)
+                .SingleOrDefaultAsync();
+
+            persistedUserId.Should().Be(userId);
+
+            var countByUser = await _context.Deliveries
+                .AsNoTracking()
+                .CountAsync(d => d.UserId == userId);
+
+            countByUser.Should().Be(1);
+
             var result = await _service.GetUserDeliveriesAsync(userId, 1, 20);
 
             var items = result.Items;

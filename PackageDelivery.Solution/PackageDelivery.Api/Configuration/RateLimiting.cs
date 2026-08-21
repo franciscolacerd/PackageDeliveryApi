@@ -1,11 +1,10 @@
-using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 namespace PackageDelivery.Api.Configuration
 {
     public static class RateLimiting
     {
-        public const string Fixed = "fixed";
         public const string Authenticated = "authenticated";
 
         public static IServiceCollection AddRateLimiting(
@@ -16,25 +15,7 @@ namespace PackageDelivery.Api.Configuration
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-                options.AddFixedWindowLimiter(Fixed, opt =>
-                {
-                    opt.PermitLimit = configuration.GetValue("RateLimiting:Fixed:PermitLimit", 60);
-                    opt.Window = TimeSpan.FromSeconds(configuration.GetValue("RateLimiting:Fixed:WindowSeconds", 60));
-                    opt.QueueLimit = configuration.GetValue("RateLimiting:Fixed:QueueLimit", 0);
-                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                });
-
-                options.AddTokenBucketLimiter(Authenticated, opt =>
-                {
-                    opt.TokenLimit = configuration.GetValue("RateLimiting:Authenticated:TokenLimit", 200);
-                    opt.ReplenishmentPeriod = TimeSpan.FromSeconds(configuration.GetValue("RateLimiting:Authenticated:ReplenishSeconds", 10));
-                    opt.TokensPerPeriod = configuration.GetValue("RateLimiting:Authenticated:TokensPerPeriod", 20);
-                    opt.QueueLimit = configuration.GetValue("RateLimiting:Authenticated:QueueLimit", 5);
-                    opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    opt.AutoReplenishment = true;
-                });
-
-                options.AddPolicy("per-ip", context =>
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                         factory: _ => new FixedWindowRateLimiterOptions
@@ -43,6 +24,23 @@ namespace PackageDelivery.Api.Configuration
                             Window = TimeSpan.FromSeconds(configuration.GetValue("RateLimiting:PerIp:WindowSeconds", 60)),
                             QueueLimit = 0
                         }));
+
+                options.AddPolicy(Authenticated, context =>
+                {
+                    var partitionKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? context.Connection.RemoteIpAddress?.ToString()
+                        ?? "anonymous";
+
+                    return RateLimitPartition.GetTokenBucketLimiter(partitionKey, _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = configuration.GetValue("RateLimiting:Authenticated:TokenLimit", 200),
+                        ReplenishmentPeriod = TimeSpan.FromSeconds(configuration.GetValue("RateLimiting:Authenticated:ReplenishSeconds", 10)),
+                        TokensPerPeriod = configuration.GetValue("RateLimiting:Authenticated:TokensPerPeriod", 20),
+                        QueueLimit = configuration.GetValue("RateLimiting:Authenticated:QueueLimit", 5),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        AutoReplenishment = true
+                    });
+                });
 
                 options.OnRejected = async (context, cancellationToken) =>
                 {

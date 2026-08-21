@@ -1,20 +1,21 @@
-@PackageDelivery.Api_HostAddress = http://localhost:5280
+@PackageDelivery.Api_HostAddress = https://localhost:7280
+#
+# Auth por cookies httpOnly → tem de ser HTTPS (7280). Sobre HTTP (5280) os cookies "Secure"
+# não são guardados/enviados. O cliente .http mantém os cookies entre pedidos, por isso o fluxo é:
+# 1) Login (define os cookies) → 2..) os pedidos seguintes vão autenticados pelo cookie access_token.
 
-### Login (get JWT)
+### 1. Login (grant_type=password) → 204 No Content + Set-Cookie (access_token, refresh_token)
 POST {{PackageDelivery.Api_HostAddress}}/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=password&username=customer@example.com&password=Password1!
 
-### Refresh token
-POST {{PackageDelivery.Api_HostAddress}}/token
-Content-Type: application/x-www-form-urlencoded
+### 2. Perfil do utilizador autenticado (usa o cookie access_token) → 200
+GET {{PackageDelivery.Api_HostAddress}}/api/authentication/account
+Accept: application/json
 
-grant_type=refresh_token&refresh_token=PUT_REFRESH_TOKEN_HERE
-
-### Create a delivery
+### 3. Criar uma delivery (autenticado pelo cookie) → 200
 POST {{PackageDelivery.Api_HostAddress}}/api/deliveries
-Authorization: Bearer PUT_ACCESS_TOKEN_HERE
 Content-Type: application/json
 
 {
@@ -39,9 +40,21 @@ Content-Type: application/json
   "attributes": { "pod": true, "sameDay": false, "cashOnDelivery": false }
 }
 
-### Authenticated user's deliveries (paginated)
+### 4. As minhas deliveries (paginado, autenticado pelo cookie) → 200
 GET {{PackageDelivery.Api_HostAddress}}/api/deliveries?page=1&pageSize=20
-Authorization: Bearer PUT_ACCESS_TOKEN_HERE
+Accept: application/json
+
+### 5. Refresh (o cookie refresh_token vai sozinho — Path=/token) → 204 + cookies novos
+POST {{PackageDelivery.Api_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token
+
+### 6. Logout → 204 (remove o refresh da BD + apaga os dois cookies)
+POST {{PackageDelivery.Api_HostAddress}}/api/authentication/logout
+
+### 7. Perfil DEPOIS do logout (sem cookie válido) → 401
+GET {{PackageDelivery.Api_HostAddress}}/api/authentication/account
 Accept: application/json
 
 ###

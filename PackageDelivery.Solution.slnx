@@ -8,6 +8,7 @@
     <Project Path="PackageDelivery.Solution/PackageDelivery.Features/PackageDelivery.Features.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Infrastructure.Tests/PackageDelivery.Infrastructure.Tests.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Infrastructure/PackageDelivery.Infrastructure.csproj" />
+    <Project Path="PackageDelivery.Solution/PackageDelivery.IntegrationTesting/PackageDelivery.IntegrationTesting.csproj" />
     <Project Path="PackageDelivery.Solution/PackageDelivery.Shared/PackageDelivery.Shared.csproj" />
   </Folder>
 </Solution>

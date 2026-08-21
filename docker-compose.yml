@@ -29,6 +29,7 @@ services:
       RunMigrations: "true"
       ConnectionStrings__PackageDeliveryConnection: "Server=sql,1433;Database=PackageDelivery;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       BaseUrl__Uri: "http://localhost:8080"
+      TokenProviderOptions__SecretKey: "${JWT_SIGNING_KEY}"
       Serilog__WriteTo__0__Args__path: "/app/logs/PackageDeliveryApi.txt"
     volumes:
       - ./logs:/app/logs

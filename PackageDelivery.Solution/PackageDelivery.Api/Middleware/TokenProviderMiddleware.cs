@@ -1,16 +1,15 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
+using PackageDelivery.Infrastructure.Context;
+using PackageDelivery.Infrastructure.Entities;
+using PackageDelivery.Shared.Models;
+using PackageDelivery.Shared.Policies;
 using Polly;
 using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Principal;
-using PackageDelivery.Infrastructure.Context;
-using PackageDelivery.Infrastructure.Entities;
-using PackageDelivery.Shared.Models;
-using PackageDelivery.Shared.Policies;
 
 namespace PackageDelivery.Api.Middleware
 {
@@ -18,7 +17,6 @@ namespace PackageDelivery.Api.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly TokenProviderOptions _options;
-        private readonly JsonSerializerSettings _serializerSettings;
         private readonly ILogger _logger;
         protected Polly.Retry.AsyncRetryPolicy AsyncPolicy { get; }
 
@@ -30,7 +28,6 @@ namespace PackageDelivery.Api.Middleware
             _next = next;
             _options = options.Value;
             _logger = logger;
-            _serializerSettings = new JsonSerializerSettings { Formatting = Newtonsoft.Json.Formatting.Indented };
             AsyncPolicy = Policy.Handle<System.Data.Common.DbException>().Or<TimeoutException>().WaitAndRetryAsync(ExceptionJitter.Get5RetryCount());
         }
 
@@ -106,28 +103,19 @@ namespace PackageDelivery.Api.Middleware
             _logger.LogInformation("User {Username} authenticated successfully and token issued in {Duration}ms",
                 username, sw.Elapsed.TotalMilliseconds);
 
-            var response = new
-            {
-                access_token = accessToken,
-                refresh_token = refreshToken,
-                expires_in = (int)_options.Expiration.TotalSeconds,
-                token_type = "Bearer"
-            };
+            var secure = _options.CookieSecure;
 
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync(JsonConvert.SerializeObject(response, _serializerSettings));
+            context.Response.Cookies.Append(AuthenticationCookies.Access, accessToken, AuthenticationCookies.AccessOptions(secure, DateTimeOffset.UtcNow.Add(_options.Expiration)));
+            context.Response.Cookies.Append(AuthenticationCookies.Refresh, refreshToken, AuthenticationCookies.RefreshOptions(secure, DateTimeOffset.UtcNow.Add(_options.RefreshTokenExpiration)));
+            context.Response.StatusCode = StatusCodes.Status204NoContent;
         }
 
         private async Task HandleRefreshTokenGrant(HttpContext context, UserManager<AspNetUser> userManager, PackageDeliveryDbContext dbContext, Stopwatch sw)
         {
-            var refreshToken = context.Request.Form["refresh_token"].ToString();
+            var refreshToken = context.Request.Cookies[AuthenticationCookies.Refresh];
 
             if (string.IsNullOrEmpty(refreshToken))
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsync("Refresh token is required.");
-                return;
-            }
+                refreshToken = context.Request.Form["refresh_token"].ToString();
 
             try
             {
@@ -171,16 +159,11 @@ namespace PackageDelivery.Api.Middleware
                 _logger.LogInformation("User {Username} token refreshed successfully in {Duration}ms",
                     user.UserName, sw.Elapsed.TotalMilliseconds);
 
-                var response = new
-                {
-                    access_token = accessToken,
-                    refresh_token = newRefreshToken,
-                    expires_in = (int)_options.Expiration.TotalSeconds,
-                    token_type = "Bearer"
-                };
+                var secure = _options.CookieSecure;
 
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(JsonConvert.SerializeObject(response, _serializerSettings));
+                context.Response.Cookies.Append(AuthenticationCookies.Access, accessToken, AuthenticationCookies.AccessOptions(secure, DateTimeOffset.UtcNow.Add(_options.Expiration)));
+                context.Response.Cookies.Append(AuthenticationCookies.Refresh, newRefreshToken, AuthenticationCookies.RefreshOptions(secure, DateTimeOffset.UtcNow.Add(_options.RefreshTokenExpiration)));
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
             }
             catch (Exception ex)
             {

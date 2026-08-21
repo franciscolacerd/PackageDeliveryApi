@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace PackageDelivery.Api.Tests._strapper
 {
@@ -18,6 +17,13 @@ namespace PackageDelivery.Api.Tests._strapper
         public static HttpClient CreateAnonymousClient() => new();
 
         public static HttpClient GetAnonymousClient() => CreateAnonymousClient();
+
+        public static FormUrlEncodedContent PasswordGrant() => new(new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = Username,
+            ["password"] = Password
+        });
 
         public static async Task<HttpClient> CreateAuthenticatedClientAsync()
         {
@@ -38,20 +44,20 @@ namespace PackageDelivery.Api.Tests._strapper
                 if (_cachedToken is not null)
                     return _cachedToken;
 
-                using var bootstrap = new HttpClient();
-                var formContent = new FormUrlEncodedContent(new Dictionary<string, string>
-                {
-                    ["grant_type"] = "password",
-                    ["username"] = Username,
-                    ["password"] = Password
-                });
+                using var handler = new HttpClientHandler { UseCookies = false };
+                using var bootstrap = new HttpClient(handler);
 
-                var response = await bootstrap.PostAsync($"{RootUrl}/token", formContent);
+                var response = await bootstrap.PostAsync($"{RootUrl}/token", PasswordGrant());
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync();
-                var doc = JsonDocument.Parse(json);
-                _cachedToken = doc.RootElement.GetProperty("access_token").GetString()!;
+                var setCookies = response.Headers.TryGetValues("Set-Cookie", out var cookies)
+                    ? cookies
+                    : Enumerable.Empty<string>();
+
+                var accessCookie = setCookies.FirstOrDefault(c => c.StartsWith("access_token=", StringComparison.Ordinal))
+                    ?? throw new InvalidOperationException("O /token não devolveu o cookie 'access_token'.");
+
+                _cachedToken = accessCookie.Split(';')[0]["access_token=".Length..];
                 return _cachedToken;
             }
             finally

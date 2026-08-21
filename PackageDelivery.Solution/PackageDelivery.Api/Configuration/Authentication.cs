@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using PackageDelivery.Shared.Models;
+using System.Text;
 
 namespace PackageDelivery.Api.Configuration
 {
@@ -13,19 +13,25 @@ namespace PackageDelivery.Api.Configuration
             var signingKey = new SymmetricSecurityKey(
                 Encoding.ASCII.GetBytes(configuration.GetSection("TokenProviderOptions:SecretKey").Value ?? string.Empty));
 
+            var section = configuration.GetSection("TokenProviderOptions");
+
             var tokenProviderOptions = new TokenProviderOptions
             {
-                Path = configuration.GetSection("TokenProviderOptions:TokenPath").Value ?? "/token",
-                Audience = configuration.GetSection("TokenProviderOptions:Audience").Value ?? string.Empty,
-                Issuer = configuration.GetSection("TokenProviderOptions:Issuer").Value ?? string.Empty,
-                SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha512)
+                Path = section["TokenPath"] ?? "/token",
+                Audience = section["Audience"] ?? string.Empty,
+                Issuer = section["Issuer"] ?? string.Empty,
+                SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha512),
+                CookieName = section["CookieName"] ?? "access_token",
+                Expiration = TimeSpan.FromMinutes(section.GetValue("Expiration", 30)),
+                RefreshTokenExpiration = TimeSpan.FromDays(section.GetValue("RefreshTokenExpirationDays", 7)),
+                CookieSecure = section.GetValue("CookieSecure", true)
             };
 
             var tokenValidationParameters = new TokenValidationParameters
             {
                 IssuerSigningKey = signingKey,
-                ValidIssuer = configuration.GetSection("TokenProviderOptions:Issuer").Value,
-                ValidAudience = configuration.GetSection("TokenProviderOptions:Audience").Value,
+                ValidIssuer = section["Issuer"] ?? string.Empty,
+                ValidAudience = section["Audience"] ?? string.Empty,
                 ClockSkew = TimeSpan.Zero,
             };
 
@@ -36,10 +42,19 @@ namespace PackageDelivery.Api.Configuration
             })
             .AddJwtBearer(options =>
             {
-                options.Audience = configuration.GetSection("TokenProviderOptions:Audience").Value;
-                options.ClaimsIssuer = configuration.GetSection("TokenProviderOptions:Issuer").Value;
+                options.Audience = section["Audience"] ?? string.Empty;
+                options.ClaimsIssuer = section["Issuer"] ?? string.Empty;
                 options.TokenValidationParameters = tokenValidationParameters;
                 options.SaveToken = true;
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx =>
+                    {
+                        if (ctx.Request.Cookies.TryGetValue(tokenProviderOptions.CookieName, out var token))
+                            ctx.Token = token;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             services.Configure<IdentityOptions>(options =>

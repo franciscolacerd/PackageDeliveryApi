@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using PackageDelivery.Features.Authentication.Models;
 using PackageDelivery.Infrastructure.Context;
 using PackageDelivery.Infrastructure.Entities;
 using PackageDelivery.Shared.Models;
 using PackageDelivery.Shared.Security;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Principal;
 
 namespace PackageDelivery.Features.Authentication.Services
 {
@@ -64,24 +64,24 @@ namespace PackageDelivery.Features.Authentication.Services
         private async Task<TokenPair> IssueAsync(AspNetUser user, CancellationToken cancellationToken)
         {
             var now = DateTime.UtcNow;
-            var identity = new ClaimsIdentity(new GenericIdentity(user.UserName!, "Token"));
-            identity.AddClaims(new[]
+
+            var descriptor = new SecurityTokenDescriptor
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName!),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
-            });
+                Issuer = _options.Issuer,
+                Audience = _options.Audience,
+                IssuedAt = now,
+                NotBefore = now,
+                Expires = now.Add(_options.Expiration),
+                SigningCredentials = _options.SigningCredentials,
+                Claims = new Dictionary<string, object>
+                {
+                    [JwtRegisteredClaimNames.Sub] = user.UserName!,
+                    [ClaimTypes.NameIdentifier] = user.Id.ToString(),
+                    [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString()
+                }
+            };
 
-            var jwt = new JwtSecurityToken(
-                issuer: _options.Issuer,
-                audience: _options.Audience,
-                claims: identity.Claims,
-                notBefore: now,
-                expires: now.Add(_options.Expiration),
-                signingCredentials: _options.SigningCredentials);
-
-            var accessToken = new JwtSecurityTokenHandler().WriteToken(jwt);
+            var accessToken = new JsonWebTokenHandler().CreateToken(descriptor);
             var refreshToken = GenerateRefreshToken();
 
             _dbContext.RefreshTokens.Add(new RefreshToken

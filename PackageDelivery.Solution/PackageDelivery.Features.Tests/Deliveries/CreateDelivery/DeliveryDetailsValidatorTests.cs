@@ -31,7 +31,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ClientReference = new string('x', 51);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.ClientReference");
+                .Should().Contain(e => e.PropertyName == "ClientReference");
         }
 
         [Test]
@@ -41,7 +41,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ClientReference = new string('x', 50);
 
             _validator.Validate(model).Errors
-                .Should().NotContain(e => e.PropertyName == "Details.ClientReference");
+                .Should().NotContain(e => e.PropertyName == "ClientReference");
         }
 
         [TestCase(0)]
@@ -52,7 +52,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.NumberOfVolumes = volumes;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.NumberOfVolumes");
+                .Should().Contain(e => e.PropertyName == "NumberOfVolumes");
         }
 
         [TestCase(1)]
@@ -63,7 +63,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.NumberOfVolumes = volumes;
 
             _validator.Validate(model).Errors
-                .Should().NotContain(e => e.PropertyName == "Details.NumberOfVolumes");
+                .Should().NotContain(e => e.PropertyName == "NumberOfVolumes");
         }
 
         [TestCase(0)]
@@ -74,7 +74,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.TotalWeightOfVolumes = (decimal)weight;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.TotalWeightOfVolumes");
+                .Should().Contain(e => e.PropertyName == "TotalWeightOfVolumes");
         }
 
         [Test]
@@ -84,7 +84,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Amount = 10000000m;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.Amount");
+                .Should().Contain(e => e.PropertyName == "Amount");
         }
 
         [Test]
@@ -94,7 +94,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Instructions = new string('x', 251);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.Instructions");
+                .Should().Contain(e => e.PropertyName == "Instructions");
         }
 
         [Test]
@@ -104,7 +104,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.PreferentialPeriod = new string('x', 24);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Details.PreferentialPeriod");
+                .Should().Contain(e => e.PropertyName == "PreferentialPeriod");
         }
     }
 }

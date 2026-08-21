@@ -1,34 +1,15 @@
 using System.Net;
-using System.Text.Json;
 using AwesomeAssertions;
-using PackageDelivery.Api.Tests._strapper;
 
 namespace PackageDelivery.Api.Tests
 {
     public class AuthenticationCookieFlowTests
     {
-        private static HttpClient RawClient() => new(new HttpClientHandler { UseCookies = false });
-
-        private static Dictionary<string, string> ParseSetCookies(HttpResponseMessage response)
+        [SetUp]
+        public void Setup()
         {
-            var jar = new Dictionary<string, string>();
-            if (response.Headers.TryGetValues("Set-Cookie", out var cookies))
-            {
-                foreach (var cookie in cookies)
-                {
-                    var pair = cookie.Split(';')[0];
-                    var eq = pair.IndexOf('=');
-                    if (eq > 0)
-                        jar[pair[..eq]] = pair[(eq + 1)..];
-                }
-            }
-            return jar;
-        }
-
-        private static async Task<(HttpResponseMessage response, Dictionary<string, string> cookies)> LoginAsync(HttpClient client)
-        {
-            var response = await client.PostAsync(ApiClientFactory.LoginUrl, ApiClientFactory.LoginContent());
-            return (response, ParseSetCookies(response));
+            if (!ApiTestHost.IsAvailable)
+                Assert.Ignore("SQL Server test container is not available.");
         }
 
         private static HttpRequestMessage GetWithCookie(string url, string cookie)
@@ -40,34 +21,17 @@ namespace PackageDelivery.Api.Tests
 
         private static HttpRequestMessage RefreshWith(string refreshCookie)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, ApiClientFactory.RefreshUrl);
+            var request = new HttpRequestMessage(HttpMethod.Post, ApiTestHost.RefreshUrl);
             request.Headers.Add("Cookie", $"refresh_token={refreshCookie}");
             return request;
-        }
-
-        private static async Task<(string token, string cookieHeader)> GetAntiforgeryAsync(HttpClient client, string accessCookie)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, ApiClientFactory.AntiforgeryUrl);
-            request.Headers.Add("Cookie", $"access_token={accessCookie}");
-            var response = await client.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            var jar = ParseSetCookies(response);
-            var cookieHeader = string.Join("; ", jar.Select(kv => $"{kv.Key}={kv.Value}"));
-
-            var json = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(json);
-            return (doc.RootElement.GetProperty("token").GetString()!, cookieHeader);
         }
 
         [Test]
         public async Task Login_Returns204AndSetsSecureCookies()
         {
-            using var client = RawClient();
+            using var client = ApiTestHost.Raw();
 
-            HttpResponseMessage login;
-            try { (login, _) = await LoginAsync(client); }
-            catch (HttpRequestException) { Assert.Ignore("API not reachable."); return; }
+            var login = await client.PostAsync(ApiTestHost.LoginUrl, ApiTestHost.LoginContent());
 
             login.StatusCode.Should().Be(HttpStatusCode.NoContent);
             (await login.Content.ReadAsStringAsync()).Should().BeEmpty();
@@ -84,36 +48,35 @@ namespace PackageDelivery.Api.Tests
         }
 
         [Test]
+        public async Task Login_WithInvalidCredentials_Returns401()
+        {
+            using var client = ApiTestHost.Raw();
+
+            var login = await client.PostAsync(ApiTestHost.LoginUrl, ApiTestHost.LoginContent(ApiTestHost.Username, "WrongPassword1!"));
+
+            login.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Test]
         public async Task Account_WithCookieReturns200_WithoutCookieReturns401()
         {
-            using var client = RawClient();
+            using var client = ApiTestHost.Raw();
 
-            HttpResponseMessage login;
-            Dictionary<string, string> cookies;
-            try { (login, cookies) = await LoginAsync(client); }
-            catch (HttpRequestException) { Assert.Ignore("API not reachable."); return; }
+            var cookies = await ApiTestHost.LoginAsync(client);
 
-            login.StatusCode.Should().Be(HttpStatusCode.NoContent);
-            var url = $"{ApiClientFactory.BaseUrl}/authentication/account";
-
-            var authenticated = await client.SendAsync(GetWithCookie(url, $"access_token={cookies["access_token"]}"));
+            var authenticated = await client.SendAsync(GetWithCookie(ApiTestHost.AccountUrl, $"access_token={cookies["access_token"]}"));
             authenticated.StatusCode.Should().Be(HttpStatusCode.OK);
 
-            var anonymous = await client.GetAsync(url);
+            var anonymous = await client.GetAsync(ApiTestHost.AccountUrl);
             anonymous.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
 
         [Test]
         public async Task Refresh_RotatesTokenAndInvalidatesThePreviousOne()
         {
-            using var client = RawClient();
+            using var client = ApiTestHost.Raw();
 
-            HttpResponseMessage login;
-            Dictionary<string, string> cookies;
-            try { (login, cookies) = await LoginAsync(client); }
-            catch (HttpRequestException) { Assert.Ignore("API not reachable."); return; }
-
-            login.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            var cookies = await ApiTestHost.LoginAsync(client);
             var oldRefresh = cookies["refresh_token"];
 
             var rotated = await client.SendAsync(RefreshWith(oldRefresh));
@@ -126,18 +89,13 @@ namespace PackageDelivery.Api.Tests
         [Test]
         public async Task Logout_InvalidatesTheSessionOnTheServer()
         {
-            using var client = RawClient();
+            using var client = ApiTestHost.Raw();
 
-            HttpResponseMessage login;
-            Dictionary<string, string> cookies;
-            try { (login, cookies) = await LoginAsync(client); }
-            catch (HttpRequestException) { Assert.Ignore("API not reachable."); return; }
+            var cookies = await ApiTestHost.LoginAsync(client);
 
-            login.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            var (csrfToken, antiforgeryCookies) = await ApiTestHost.GetAntiforgeryAsync(client, cookies["access_token"]);
 
-            var (csrfToken, antiforgeryCookies) = await GetAntiforgeryAsync(client, cookies["access_token"]);
-
-            var logoutRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiClientFactory.BaseUrl}/authentication/logout");
+            var logoutRequest = new HttpRequestMessage(HttpMethod.Post, ApiTestHost.LogoutUrl);
             logoutRequest.Headers.Add("Cookie", $"access_token={cookies["access_token"]}; {antiforgeryCookies}");
             logoutRequest.Headers.Add("X-CSRF-TOKEN", csrfToken);
             var logout = await client.SendAsync(logoutRequest);

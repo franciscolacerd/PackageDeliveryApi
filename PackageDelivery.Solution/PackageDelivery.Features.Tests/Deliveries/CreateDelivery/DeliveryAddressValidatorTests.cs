@@ -6,7 +6,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
 {
     public class DeliveryAddressValidatorTests
     {
-        private readonly DeliveryAddressValidator _validator = new("Sender");
+        private readonly DeliveryAddressValidator _validator = new();
 
         private static DeliveryAddress ValidAddress() => new()
         {
@@ -30,7 +30,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.AddressLine = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.AddressLine");
+                .Should().Contain(e => e.PropertyName == "AddressLine");
         }
 
         [Test]
@@ -40,7 +40,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.AddressLine = new string('x', 401);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.AddressLine");
+                .Should().Contain(e => e.PropertyName == "AddressLine");
         }
 
         [Test]
@@ -50,7 +50,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Place = new string('x', 101);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.Place");
+                .Should().Contain(e => e.PropertyName == "Place");
         }
 
         [Test]
@@ -60,7 +60,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCode = string.Empty;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.ZipCode");
+                .Should().Contain(e => e.PropertyName == "ZipCode");
         }
 
         [Test]
@@ -71,7 +71,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCode = new string('1', 11);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.ZipCode");
+                .Should().Contain(e => e.PropertyName == "ZipCode");
         }
 
         [TestCase("1234")]
@@ -84,7 +84,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCode = zipCode;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.ZipCode");
+                .Should().Contain(e => e.PropertyName == "ZipCode");
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCode = "28001";
 
             _validator.Validate(model).Errors
-                .Should().NotContain(e => e.PropertyName == "Sender.Address.ZipCode");
+                .Should().NotContain(e => e.PropertyName == "ZipCode");
         }
 
         [Test]
@@ -105,7 +105,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCodePlace = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.ZipCodePlace");
+                .Should().Contain(e => e.PropertyName == "ZipCodePlace");
         }
 
         [Test]
@@ -115,7 +115,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.ZipCodePlace = new string('x', 101);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.ZipCodePlace");
+                .Should().Contain(e => e.PropertyName == "ZipCodePlace");
         }
 
         [Test]
@@ -125,7 +125,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.CountryCode = "PRTT";
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address.CountryCode");
+                .Should().Contain(e => e.PropertyName == "CountryCode");
         }
     }
 }

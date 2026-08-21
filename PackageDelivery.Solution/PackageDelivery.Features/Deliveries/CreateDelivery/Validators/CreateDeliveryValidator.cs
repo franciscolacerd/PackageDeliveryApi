@@ -14,8 +14,8 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Validators
             RuleFor(x => x.Attributes).NotNull();
 
             RuleFor(x => x.Details).SetValidator(new DeliveryDetailsValidator()).When(x => x.Details != null);
-            RuleFor(x => x.Sender).SetValidator(new DeliveryPartyValidator("Sender")).When(x => x.Sender != null);
-            RuleFor(x => x.Receiver).SetValidator(new DeliveryPartyValidator("Receiver")).When(x => x.Receiver != null);
+            RuleFor(x => x.Sender).SetValidator(new DeliveryPartyValidator()).When(x => x.Sender != null);
+            RuleFor(x => x.Receiver).SetValidator(new DeliveryPartyValidator()).When(x => x.Receiver != null);
 
             RuleFor(x => x)
                 .Must(x => !(x.Details?.Amount > 0) || x.Attributes?.CashOnDelivery == true)
@@ -31,49 +31,49 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Validators
     {
         public DeliveryDetailsValidator()
         {
-            RuleFor(x => x.ClientReference).MaximumLength(50).OverridePropertyName("Details.ClientReference");
-            RuleFor(x => x.NumberOfVolumes).GreaterThan(0).LessThanOrEqualTo(200).OverridePropertyName("Details.NumberOfVolumes");
-            RuleFor(x => x.TotalWeightOfVolumes).GreaterThan(0.0001m).LessThanOrEqualTo(99999).OverridePropertyName("Details.TotalWeightOfVolumes");
-            RuleFor(x => x.Amount).LessThanOrEqualTo(9999999.99m).OverridePropertyName("Details.Amount");
-            RuleFor(x => x.Instructions).MaximumLength(250).OverridePropertyName("Details.Instructions");
-            RuleFor(x => x.PreferentialPeriod).MaximumLength(23).OverridePropertyName("Details.PreferentialPeriod");
+            RuleFor(x => x.ClientReference).MaximumLength(50);
+            RuleFor(x => x.NumberOfVolumes).GreaterThan(0).LessThanOrEqualTo(200);
+            RuleFor(x => x.TotalWeightOfVolumes).GreaterThan(0.0001m).LessThanOrEqualTo(99999);
+            RuleFor(x => x.Amount).LessThanOrEqualTo(9999999.99m);
+            RuleFor(x => x.Instructions).MaximumLength(250);
+            RuleFor(x => x.PreferentialPeriod).MaximumLength(23);
         }
     }
 
     public class DeliveryPartyValidator : AbstractValidator<DeliveryParty>
     {
-        public DeliveryPartyValidator(string field)
+        public DeliveryPartyValidator()
         {
-            RuleFor(x => x.Name).NotNull().MaximumLength(100).OverridePropertyName($"{field}.Name");
-            RuleFor(x => x.Contact).NotNull().OverridePropertyName($"{field}.Contact");
-            RuleFor(x => x.Address).NotNull().OverridePropertyName($"{field}.Address");
+            RuleFor(x => x.Name).NotNull().MaximumLength(100);
+            RuleFor(x => x.Contact).NotNull();
+            RuleFor(x => x.Address).NotNull();
 
-            RuleFor(x => x.Contact).SetValidator(new DeliveryContactValidator(field)).When(x => x.Contact != null);
-            RuleFor(x => x.Address).SetValidator(new DeliveryAddressValidator(field)).When(x => x.Address != null);
+            RuleFor(x => x.Contact).SetValidator(new DeliveryContactValidator()).When(x => x.Contact != null);
+            RuleFor(x => x.Address).SetValidator(new DeliveryAddressValidator()).When(x => x.Address != null);
         }
     }
 
     public class DeliveryContactValidator : AbstractValidator<DeliveryContact>
     {
-        public DeliveryContactValidator(string field)
+        public DeliveryContactValidator()
         {
-            RuleFor(x => x.Name).NotNull().MaximumLength(200).OverridePropertyName($"{field}.Contact.Name");
-            RuleFor(x => x.PhoneNumber).NotNull().MaximumLength(100).OverridePropertyName($"{field}.Contact.PhoneNumber");
-            RuleFor(x => x.Email).MaximumLength(100).EmailAddress().OverridePropertyName($"{field}.Contact.Email");
+            RuleFor(x => x.Name).NotNull().MaximumLength(200);
+            RuleFor(x => x.PhoneNumber).NotNull().MaximumLength(100);
+            RuleFor(x => x.Email).MaximumLength(100).EmailAddress();
         }
     }
 
     public class DeliveryAddressValidator : AbstractValidator<DeliveryAddress>
     {
-        public DeliveryAddressValidator(string field)
+        public DeliveryAddressValidator()
         {
-            RuleFor(x => x.AddressLine).NotNull().MaximumLength(400).OverridePropertyName($"{field}.Address.AddressLine");
-            RuleFor(x => x.Place).MaximumLength(100).OverridePropertyName($"{field}.Address.Place");
-            RuleFor(x => x.ZipCode).NotNull().NotEmpty().MaximumLength(10).OverridePropertyName($"{field}.Address.ZipCode");
+            RuleFor(x => x.AddressLine).NotNull().MaximumLength(400);
+            RuleFor(x => x.Place).MaximumLength(100);
+            RuleFor(x => x.ZipCode).NotNull().NotEmpty().MaximumLength(10);
             RuleFor(x => x).Must(ValidateZipCode)
-                .WithMessage("'{PropertyName}' must be valid.").OverridePropertyName($"{field}.Address.ZipCode");
-            RuleFor(x => x.ZipCodePlace).NotNull().MaximumLength(100).OverridePropertyName($"{field}.Address.ZipCodePlace");
-            RuleFor(x => x.CountryCode).MaximumLength(3).OverridePropertyName($"{field}.Address.CountryCode");
+                .WithMessage("'{PropertyName}' must be valid.").OverridePropertyName("ZipCode");
+            RuleFor(x => x.ZipCodePlace).NotNull().MaximumLength(100);
+            RuleFor(x => x.CountryCode).MaximumLength(3);
         }
 
         private static bool ValidateZipCode(DeliveryAddress address)

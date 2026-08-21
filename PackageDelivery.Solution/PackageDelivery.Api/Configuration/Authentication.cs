@@ -46,6 +46,7 @@ namespace PackageDelivery.Api.Configuration
                 options.ClaimsIssuer = section["Issuer"] ?? string.Empty;
                 options.TokenValidationParameters = tokenValidationParameters;
                 options.SaveToken = true;
+                options.MapInboundClaims = false;
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = ctx =>

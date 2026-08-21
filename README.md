@@ -10,25 +10,33 @@ A .NET 10 Web API for managing package deliveries, built with a **vertical slice
 | **PackageDelivery.Features** | Feature slices — one folder per operation (`Models` / `Validators` / `Builders` / `Repositories` / `Services`) |
 | **PackageDelivery.Infrastructure** | EF Core `DbContext`, entities and ASP.NET Core Identity |
 | **PackageDelivery.Shared** | Cross-cutting building blocks (response models, policies, token options, exceptions) |
-| **PackageDelivery.Api.Tests** | End-to-end tests (HttpClient) — NUnit |
-| **PackageDelivery.Features.Tests** | Feature/service integration tests — NUnit |
-| **PackageDelivery.Infrastructure.Tests** | Persistence integration tests — NUnit |
+| **PackageDelivery.Api.Tests** | End-to-end tests — in-process host (`WebApplicationFactory`) against a real SQL Server (Testcontainers) — NUnit |
+| **PackageDelivery.Features.Tests** | Feature/service integration tests (Testcontainers) + validator unit tests — NUnit |
+| **PackageDelivery.Infrastructure.Tests** | Persistence integration tests (Testcontainers) — NUnit |
+| **PackageDelivery.IntegrationTesting** | Shared SQL Server test container (single container reused across test assemblies) |
 
 ## Stack
 
 - **Entity Framework Core 10** + SQL Server (single `PackageDeliveryDbContext`)
-- **ASP.NET Core Identity** (`AspNetUser : IdentityUser<long>`) with JWT bearer authentication and refresh tokens
+- **ASP.NET Core Identity** (`AspNetUser : IdentityUser<long>`)
+- **Cookie-based authentication** — access + refresh JWTs in `HttpOnly` + `Secure` + `SameSite=Strict` cookies, with server-side refresh-token rotation and reuse detection (a `Bearer` header is still accepted for non-browser clients)
+- **Anti-forgery (CSRF)** on state-changing requests + **CORS** with explicit origins (fail-closed)
+- **RFC 7807 ProblemDetails** as the unified error contract (400 binding · 422 validation · 500)
 - **FluentValidation** for request validation
 - **Serilog** (rolling file, configured in `appsettings.json`)
 - **Health checks** (`/health`, `/Healthz`)
-- **Rate limiting** (fixed window, token bucket, per-IP)
-- Security headers, CORS and Swagger / OpenAPI
+- **Rate limiting** — per-IP (global fixed window) and per-user (token bucket)
+- Security headers (`NetEscapades.AspNetCore.SecurityHeaders`) and Swagger / OpenAPI
 
 ## Endpoints
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| `POST` | `/token` | Authenticate (`grant_type=password`) or renew (`grant_type=refresh_token`) — returns a JWT |
+| `POST` | `/api/authentication/login` | Authenticate (JSON `{ username, password }`) — sets the access + refresh cookies, returns `204` |
+| `POST` | `/api/authentication/refresh` | Rotate the refresh token and re-issue the cookies (`204`) |
+| `GET`  | `/api/authentication/account` | Profile of the authenticated user |
+| `POST` | `/api/authentication/logout` | Revoke the refresh token and clear the cookies |
+| `GET`  | `/api/authentication/antiforgery/token` | Issue an anti-forgery request token (sent back in the `X-CSRF-TOKEN` header on unsafe requests) |
 | `POST` | `/api/deliveries` | Create a delivery (validates the request, generates a barcode and one package per volume) |
 | `GET`  | `/api/deliveries` | List the authenticated user's deliveries, paginated (`?page=1&pageSize=20`) — returns a `PagedResult` (`items` plus `page`, `pageSize`, `totalCount`, `totalPages`, `hasPrevious`, `hasNext`) |
 
@@ -54,6 +62,14 @@ dotnet build PackageDelivery.Solution.slnx
 dotnet run --project PackageDelivery.Solution/PackageDelivery.Api
 dotnet test PackageDelivery.Solution.slnx
 ```
+
+## Testing
+
+- **Validator unit tests** run anywhere with no external dependencies.
+- **Integration and end-to-end tests need Docker.** A single SQL Server container (Testcontainers) is started once and reused across the test assemblies (`PackageDelivery.IntegrationTesting`); migrations are applied to it automatically. When Docker is unavailable the database-backed tests are skipped rather than failing.
+- **End-to-end tests** (`PackageDelivery.Api.Tests`) boot the real pipeline in-process with `WebApplicationFactory<Program>`, seed a test user, and exercise the authenticated cookie flows (login → account → refresh rotation → logout, CSRF, validation) over the actual middleware stack.
+
+CI runs the validator unit tests on Windows and the **full suite on Linux** (where Docker is available), so the authenticated flows are covered on every push.
 
 ## Containerization
 

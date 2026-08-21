@@ -33,12 +33,40 @@ jobs:
       - name: Build
         run: dotnet build PackageDelivery.Solution.slnx -c Release --no-restore --nologo
 
-      # Only the validator unit tests run in CI. Integration tests (SQL Server)
-      # and end-to-end tests (running API) need external resources that CI does
-      # not provide.
+      # Windows runners have no Linux SQL Server / Docker, so only the pure
+      # unit tests (validators) run here. The integration and end-to-end tests
+      # run on the Linux job below, which has Docker for Testcontainers.
       - name: Unit tests
         run: >
           dotnet test
           PackageDelivery.Solution/PackageDelivery.Features.Tests/PackageDelivery.Features.Tests.csproj
           --filter "FullyQualifiedName~Validator"
           --no-build -c Release --nologo
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: preview
+
+      - name: Pre-pull SQL Server image
+        run: docker pull mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Restore
+        run: dotnet restore PackageDelivery.Solution.slnx
+
+      - name: Build
+        run: dotnet build PackageDelivery.Solution.slnx -c Release --no-restore --nologo
+
+      # Docker is available on Ubuntu runners, so Testcontainers spins up a real
+      # SQL Server. This runs the full suite: unit + integration + the
+      # WebApplicationFactory end-to-end tests (authenticated cookie flows).
+      - name: All tests
+        run: dotnet test PackageDelivery.Solution.slnx --no-build -c Release --nologo

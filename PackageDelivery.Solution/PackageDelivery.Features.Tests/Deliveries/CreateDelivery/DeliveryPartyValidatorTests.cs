@@ -6,7 +6,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
 {
     public class DeliveryPartyValidatorTests
     {
-        private readonly DeliveryPartyValidator _validator = new("Sender");
+        private readonly DeliveryPartyValidator _validator = new();
 
         private static DeliveryParty ValidParty() => new()
         {
@@ -40,7 +40,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Name = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Name");
+                .Should().Contain(e => e.PropertyName == "Name");
         }
 
         [Test]
@@ -50,7 +50,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Name = new string('x', 101);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Name");
+                .Should().Contain(e => e.PropertyName == "Name");
         }
 
         [Test]
@@ -60,7 +60,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Contact = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact");
+                .Should().Contain(e => e.PropertyName == "Contact");
         }
 
         [Test]
@@ -70,7 +70,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Address = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Address");
+                .Should().Contain(e => e.PropertyName == "Address");
         }
 
         [Test]

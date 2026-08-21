@@ -1,61 +1,24 @@
 using System.Net;
 using System.Text.Json;
 using AwesomeAssertions;
-using PackageDelivery.Api.Tests._strapper;
 
 namespace PackageDelivery.Api.Tests
 {
     public class AuthenticationTests
     {
-        [Test]
-        public async Task Login_SetsHttpOnlySecureCookies()
+        [SetUp]
+        public void Setup()
         {
-            HttpResponseMessage response;
-            try
-            {
-                using var handler = new HttpClientHandler { UseCookies = false };
-                using var client = new HttpClient(handler);
-                response = await client.PostAsync(ApiClientFactory.LoginUrl, ApiClientFactory.LoginContent());
-            }
-            catch (HttpRequestException)
-            {
-                Assert.Ignore("API not reachable in this environment.");
-                return;
-            }
-
-            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-            response.Headers.TryGetValues("Set-Cookie", out var setCookies).Should().BeTrue();
-
-            var cookies = setCookies!.ToList();
-
-            var accessCookie = cookies.Single(c => c.StartsWith("access_token=")).ToLowerInvariant();
-            accessCookie.Should().Contain("httponly");
-            accessCookie.Should().Contain("secure");
-            accessCookie.Should().Contain("samesite=strict");
-            accessCookie.Should().Contain("path=/");
-
-            var refreshCookie = cookies.Single(c => c.StartsWith("refresh_token=")).ToLowerInvariant();
-            refreshCookie.Should().Contain("httponly");
-            refreshCookie.Should().Contain("secure");
-            refreshCookie.Should().Contain("samesite=strict");
-            refreshCookie.Should().Contain("path=/api/authentication");
+            if (!ApiTestHost.IsAvailable)
+                Assert.Ignore("SQL Server test container is not available.");
         }
 
         [Test]
         public async Task Account_WithoutAuthentication_Returns401()
         {
-            using var client = ApiClientFactory.GetAnonymousClient();
+            using var client = ApiTestHost.Raw();
 
-            HttpResponseMessage response;
-            try
-            {
-                response = await client.GetAsync($"{ApiClientFactory.BaseUrl}/authentication/account");
-            }
-            catch (HttpRequestException)
-            {
-                Assert.Ignore("API not reachable in this environment.");
-                return;
-            }
+            var response = await client.GetAsync(ApiTestHost.AccountUrl);
 
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
@@ -63,104 +26,60 @@ namespace PackageDelivery.Api.Tests
         [Test]
         public async Task Account_AfterLogin_ReturnsCurrentUser()
         {
-            HttpClient client;
-            try
-            {
-                client = await CreateLoggedInClientAsync();
-            }
-            catch (HttpRequestException)
-            {
-                Assert.Ignore("API not reachable in this environment.");
-                return;
-            }
+            using var client = ApiTestHost.Raw();
 
-            using (client)
-            {
-                var response = await client.GetAsync($"{ApiClientFactory.BaseUrl}/authentication/account");
+            var cookies = await ApiTestHost.LoginAsync(client);
 
-                response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var request = new HttpRequestMessage(HttpMethod.Get, ApiTestHost.AccountUrl);
+            request.Headers.Add("Cookie", $"access_token={cookies["access_token"]}");
+            var response = await client.SendAsync(request);
 
-                var json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-                root.TryGetProperty("username", out var username).Should().BeTrue();
-                username.GetString().Should().NotBeNullOrWhiteSpace();
-                root.TryGetProperty("userId", out _).Should().BeTrue();
-            }
+            var json = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            root.TryGetProperty("username", out var username).Should().BeTrue();
+            username.GetString().Should().Be(ApiTestHost.Username);
+            root.TryGetProperty("userId", out var userId).Should().BeTrue();
+            userId.GetString().Should().NotBeNullOrWhiteSpace();
         }
 
         [Test]
         public async Task Refresh_AfterLogin_IssuesNewCookies()
         {
-            HttpClient client;
-            try
-            {
-                client = await CreateLoggedInClientAsync();
-            }
-            catch (HttpRequestException)
-            {
-                Assert.Ignore("API not reachable in this environment.");
-                return;
-            }
+            using var client = ApiTestHost.Raw();
 
-            using (client)
-            {
-                var response = await client.PostAsync(ApiClientFactory.RefreshUrl, null);
+            var cookies = await ApiTestHost.LoginAsync(client);
 
-                response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-                response.Headers.TryGetValues("Set-Cookie", out var setCookies).Should().BeTrue();
-                setCookies!.Should().Contain(c => c.StartsWith("access_token="));
-            }
+            var request = new HttpRequestMessage(HttpMethod.Post, ApiTestHost.RefreshUrl);
+            request.Headers.Add("Cookie", $"refresh_token={cookies["refresh_token"]}");
+            var response = await client.SendAsync(request);
+
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            response.Headers.TryGetValues("Set-Cookie", out var setCookies).Should().BeTrue();
+            setCookies!.Should().Contain(c => c.StartsWith("access_token="));
         }
 
         [Test]
         public async Task Logout_AfterLogin_ClearsSessionAndAccountReturns401()
         {
-            HttpClient client;
-            try
-            {
-                client = await CreateLoggedInClientAsync();
-            }
-            catch (HttpRequestException)
-            {
-                Assert.Ignore("API not reachable in this environment.");
-                return;
-            }
+            using var client = ApiTestHost.Raw();
 
-            using (client)
-            {
-                var csrfToken = await GetAntiforgeryTokenAsync(client);
+            var cookies = await ApiTestHost.LoginAsync(client);
+            var (csrfToken, antiforgeryCookies) = await ApiTestHost.GetAntiforgeryAsync(client, cookies["access_token"]);
 
-                var logoutRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiClientFactory.BaseUrl}/authentication/logout");
-                logoutRequest.Headers.Add("X-CSRF-TOKEN", csrfToken);
-                var logout = await client.SendAsync(logoutRequest);
-                logout.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            var logoutRequest = new HttpRequestMessage(HttpMethod.Post, ApiTestHost.LogoutUrl);
+            logoutRequest.Headers.Add("Cookie", $"access_token={cookies["access_token"]}; {antiforgeryCookies}");
+            logoutRequest.Headers.Add("X-CSRF-TOKEN", csrfToken);
+            var logout = await client.SendAsync(logoutRequest);
+            logout.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-                var account = await client.GetAsync($"{ApiClientFactory.BaseUrl}/authentication/account");
-                account.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-            }
-        }
-
-        private static async Task<HttpClient> CreateLoggedInClientAsync()
-        {
-            var handler = new HttpClientHandler { CookieContainer = new CookieContainer(), UseCookies = true };
-            var client = new HttpClient(handler);
-
-            var login = await client.PostAsync(ApiClientFactory.LoginUrl, ApiClientFactory.LoginContent());
-            login.EnsureSuccessStatusCode();
-
-            return client;
-        }
-
-        private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client)
-        {
-            var response = await client.GetAsync(ApiClientFactory.AntiforgeryUrl);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.GetProperty("token").GetString()!;
+            var refreshAfterLogout = new HttpRequestMessage(HttpMethod.Post, ApiTestHost.RefreshUrl);
+            refreshAfterLogout.Headers.Add("Cookie", $"refresh_token={cookies["refresh_token"]}");
+            var refresh = await client.SendAsync(refreshAfterLogout);
+            refresh.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
     }
 }

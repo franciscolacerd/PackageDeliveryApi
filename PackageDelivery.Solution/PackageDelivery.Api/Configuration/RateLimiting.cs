@@ -52,15 +52,21 @@ namespace PackageDelivery.Api.Configuration
                         context.HttpContext.Connection.RemoteIpAddress,
                         context.HttpContext.Request.Path);
 
+                    double? retryAfterSeconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                        ? retryAfter.TotalSeconds
+                        : null;
+
+                    if (retryAfterSeconds is not null)
+                        context.HttpContext.Response.Headers.RetryAfter =
+                            ((int)Math.Ceiling(retryAfterSeconds.Value)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
                     context.HttpContext.Response.ContentType = "application/json";
                     await context.HttpContext.Response.WriteAsJsonAsync(new
                     {
                         title = "Too Many Requests",
                         status = 429,
                         detail = "Rate limit exceeded. Try again later.",
-                        retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
-                            ? retryAfter.TotalSeconds
-                            : (double?)null
+                        retryAfter = retryAfterSeconds
                     }, cancellationToken: cancellationToken);
                 };
             });

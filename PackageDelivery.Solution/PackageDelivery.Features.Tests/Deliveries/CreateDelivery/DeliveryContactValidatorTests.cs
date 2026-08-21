@@ -6,7 +6,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
 {
     public class DeliveryContactValidatorTests
     {
-        private readonly DeliveryContactValidator _validator = new("Sender");
+        private readonly DeliveryContactValidator _validator = new();
 
         private static DeliveryContact ValidContact() => new()
         {
@@ -28,7 +28,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Name = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact.Name");
+                .Should().Contain(e => e.PropertyName == "Name");
         }
 
         [Test]
@@ -38,7 +38,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Name = new string('x', 201);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact.Name");
+                .Should().Contain(e => e.PropertyName == "Name");
         }
 
         [Test]
@@ -48,7 +48,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.PhoneNumber = null!;
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact.PhoneNumber");
+                .Should().Contain(e => e.PropertyName == "PhoneNumber");
         }
 
         [Test]
@@ -58,7 +58,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.PhoneNumber = new string('9', 101);
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact.PhoneNumber");
+                .Should().Contain(e => e.PropertyName == "PhoneNumber");
         }
 
         [Test]
@@ -68,7 +68,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Email = null;
 
             _validator.Validate(model).Errors
-                .Should().NotContain(e => e.PropertyName == "Sender.Contact.Email");
+                .Should().NotContain(e => e.PropertyName == "Email");
         }
 
         [Test]
@@ -78,7 +78,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.CreateDelivery
             model.Email = "not-an-email";
 
             _validator.Validate(model).Errors
-                .Should().Contain(e => e.PropertyName == "Sender.Contact.Email");
+                .Should().Contain(e => e.PropertyName == "Email");
         }
     }
 }

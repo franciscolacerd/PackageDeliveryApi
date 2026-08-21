@@ -12,35 +12,51 @@ namespace PackageDelivery.IntegrationTesting
 
         private const string Image = "mcr.microsoft.com/mssql/server:2022-latest";
 
-        private static readonly MsSqlContainer Container = new MsSqlBuilder(Image)
-            .WithName(ContainerName)
-            .WithReuse(true)
-            .Build();
-
         private static readonly SemaphoreSlim Gate = new(1, 1);
 
         private static bool _initialized;
 
-        public static async Task<string> EnsureStartedAsync()
+        public static bool IsAvailable { get; private set; }
+
+        public static string? ConnectionString { get; private set; }
+
+        public static string? UnavailableReason { get; private set; }
+
+        public static async Task EnsureStartedAsync()
         {
             await Gate.WaitAsync();
             try
             {
-                if (!_initialized)
+                if (_initialized)
+                    return;
+
+                _initialized = true;
+
+                try
                 {
-                    await Container.StartAsync();
+                    var container = new MsSqlBuilder(Image)
+                        .WithName(ContainerName)
+                        .WithReuse(true)
+                        .Build();
+
+                    await container.StartAsync();
 
                     var options = new DbContextOptionsBuilder<PackageDeliveryDbContext>()
-                        .UseSqlServer(Container.GetConnectionString())
+                        .UseSqlServer(container.GetConnectionString())
                         .Options;
 
                     await using var context = new PackageDeliveryDbContext(options);
                     await context.Database.MigrateAsync();
 
-                    _initialized = true;
+                    ConnectionString = container.GetConnectionString();
+                    IsAvailable = true;
                 }
-
-                return Container.GetConnectionString();
+                catch (Exception exception)
+                {
+                    IsAvailable = false;
+                    ConnectionString = null;
+                    UnavailableReason = exception.Message;
+                }
             }
             finally
             {

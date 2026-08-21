@@ -5,8 +5,7 @@ namespace PackageDelivery.Infrastructure.Tests
     [TestFixture]
     public class SigningKeyGeneratorTests
     {
-        // [Explicit] → não corre no test run normal; corre-lo à mão quando precisas da chave.
-        [Test, Explicit("Utilitário: gera uma signing key para TokenProviderOptions:SecretKey.")]
+        [Test, Explicit("Utility: generates a signing key for TokenProviderOptions:SecretKey.")]
         public void Generate_HmacSha512_SigningKey()
         {
             var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));

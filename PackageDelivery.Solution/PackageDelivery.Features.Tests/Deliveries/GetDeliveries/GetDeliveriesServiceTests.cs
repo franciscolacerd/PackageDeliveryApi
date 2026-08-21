@@ -6,6 +6,7 @@ using PackageDelivery.Features.Deliveries.CreateDelivery.Services;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Services;
 using PackageDelivery.Features.Tests._strapper;
 using PackageDelivery.Infrastructure.Context;
+using PackageDelivery.IntegrationTesting;
 
 namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
 {
@@ -20,6 +21,9 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
         [SetUp]
         public void Setup()
         {
+            if (!SharedDatabase.IsAvailable)
+                Assert.Ignore("SQL Server test container is not available.");
+
             _serviceProvider = Bootstrapper.Bind();
             _service = _serviceProvider.GetRequiredService<IGetDeliveriesService>();
             _createService = _serviceProvider.GetRequiredService<ICreateDeliveryService>();
@@ -29,7 +33,7 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
         [TearDown]
         public async Task TearDown()
         {
-            if (_createdBarCodes.Count > 0)
+            if (_context is not null && _createdBarCodes.Count > 0)
             {
                 var toDelete = await _context.Deliveries
                     .Where(d => _createdBarCodes.Contains(d.BarCode))
@@ -39,8 +43,11 @@ namespace PackageDelivery.Features.Tests.Deliveries.GetDeliveries
                 await _context.SaveChangesAsync();
             }
 
-            await _context.DisposeAsync();
-            await _serviceProvider.DisposeAsync();
+            if (_context is not null)
+                await _context.DisposeAsync();
+
+            if (_serviceProvider is not null)
+                await _serviceProvider.DisposeAsync();
         }
 
         [Test]

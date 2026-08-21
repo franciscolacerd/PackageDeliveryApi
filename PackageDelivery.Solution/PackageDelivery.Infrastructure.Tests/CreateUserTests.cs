@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PackageDelivery.Infrastructure.Context;
 using PackageDelivery.Infrastructure.Entities;
 using PackageDelivery.Infrastructure.Tests._strapper;
+using PackageDelivery.IntegrationTesting;
 
 namespace PackageDelivery.Infrastructure.Tests
 {
@@ -16,6 +17,9 @@ namespace PackageDelivery.Infrastructure.Tests
         [SetUp]
         public void Setup()
         {
+            if (!SharedDatabase.IsAvailable)
+                Assert.Ignore("SQL Server test container is not available.");
+
             this.serviceProvider = Bootstrapper.Bind();
 
             this.dbContext = serviceProvider.GetRequiredService<PackageDeliveryDbContext>();
@@ -25,9 +29,13 @@ namespace PackageDelivery.Infrastructure.Tests
         [TearDown]
         public async Task TearDown()
         {
-            await this.serviceProvider.DisposeAsync();
-            await this.dbContext.DisposeAsync();
-            this.userManager.Dispose();
+            if (this.serviceProvider is not null)
+                await this.serviceProvider.DisposeAsync();
+
+            if (this.dbContext is not null)
+                await this.dbContext.DisposeAsync();
+
+            this.userManager?.Dispose();
         }
 
         [Test]

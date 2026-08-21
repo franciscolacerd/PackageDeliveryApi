@@ -55,7 +55,7 @@ namespace PackageDelivery.Api.Tests._strapper
                     : Enumerable.Empty<string>();
 
                 var accessCookie = setCookies.FirstOrDefault(c => c.StartsWith("access_token=", StringComparison.Ordinal))
-                    ?? throw new InvalidOperationException("O /token não devolveu o cookie 'access_token'.");
+                    ?? throw new InvalidOperationException("The /token endpoint did not return the 'access_token' cookie.");
 
                 _cachedToken = accessCookie.Split(';')[0]["access_token=".Length..];
                 return _cachedToken;

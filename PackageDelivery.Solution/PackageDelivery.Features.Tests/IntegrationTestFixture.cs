@@ -8,11 +8,12 @@ namespace PackageDelivery.Features.Tests
         [OneTimeSetUp]
         public async Task RunBeforeAnyTests()
         {
-            var connectionString = await SharedDatabase.EnsureStartedAsync();
+            await SharedDatabase.EnsureStartedAsync();
 
-            Environment.SetEnvironmentVariable(
-                SharedDatabase.ConnectionStringEnvironmentVariable,
-                connectionString);
+            if (SharedDatabase.IsAvailable)
+                Environment.SetEnvironmentVariable(
+                    SharedDatabase.ConnectionStringEnvironmentVariable,
+                    SharedDatabase.ConnectionString);
         }
     }
 }

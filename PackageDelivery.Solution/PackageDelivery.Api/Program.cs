@@ -22,8 +22,9 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddCorsPolicies(builder.Configuration);
 builder.Services.AddRateLimiting(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddControllers().AddJsonOptions(options =>
-    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
+builder.Services
+    .AddControllers(options => options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()))
+    .AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
 
 builder.Host.UseSerilog((ctx, lc) => lc
     .ReadFrom.Configuration(ctx.Configuration));
@@ -32,7 +33,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.UseHealthChecks<PackageDeliveryDbContext>(builder.Configuration);
 builder.Services.AddSwagger();
 builder.Services.AddSecurity();
-
+builder.Services.AddAntiforgeryProtection();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -58,6 +59,7 @@ app.UseRouting();
 app.UseCors(Policies.CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 app.UseRateLimiter();
 app.UseMiddleware<TokenProviderMiddleware>(Options.Create(tokenProviderOptions));
 

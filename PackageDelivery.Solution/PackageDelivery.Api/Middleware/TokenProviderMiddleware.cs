@@ -5,6 +5,7 @@ using PackageDelivery.Infrastructure.Context;
 using PackageDelivery.Infrastructure.Entities;
 using PackageDelivery.Shared.Models;
 using PackageDelivery.Shared.Policies;
+using PackageDelivery.Shared.Security;
 using Polly;
 using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
@@ -59,7 +60,7 @@ namespace PackageDelivery.Api.Middleware
 
             if (grantType == "password")
             {
-                await HandlePasswordGrant(context, userManager, sw);
+                await HandlePasswordGrant(context, userManager, dbContext, sw);
             }
             else if (grantType == "refresh_token")
             {
@@ -72,7 +73,7 @@ namespace PackageDelivery.Api.Middleware
             }
         }
 
-        private async Task HandlePasswordGrant(HttpContext context, UserManager<AspNetUser> userManager, Stopwatch sw)
+        private async Task HandlePasswordGrant(HttpContext context, UserManager<AspNetUser> userManager, PackageDeliveryDbContext dbContext, Stopwatch sw)
         {
             var username = context.Request.Form["username"].ToString();
             var password = context.Request.Form["password"].ToString();
@@ -89,7 +90,7 @@ namespace PackageDelivery.Api.Middleware
                 return;
             }
 
-            var (accessToken, refreshToken) = await GenerateTokenPairAsync(user, identity, userManager);
+            var (accessToken, refreshToken) = await GenerateTokenPairAsync(user, identity, userManager, dbContext);
 
             if (string.IsNullOrEmpty(accessToken))
             {
@@ -119,21 +120,47 @@ namespace PackageDelivery.Api.Middleware
 
             try
             {
-                var userToken = await dbContext.UserTokens
-                    .FirstOrDefaultAsync(t => t.LoginProvider == "RefreshTokenProvider"
-                        && t.Name == "RefreshToken"
-                        && t.Value == refreshToken);
+                var hash = RefreshTokenHasher.Hash(refreshToken);
+                var stored = await dbContext.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
 
-                if (userToken == null)
+                if (stored is null)
                 {
                     sw.Stop();
-                    _logger.LogWarning("Invalid or expired refresh token attempt in {Duration}ms", sw.Elapsed.TotalMilliseconds);
+                    _logger.LogWarning("Unknown refresh token attempt in {Duration}ms", sw.Elapsed.TotalMilliseconds);
                     context.Response.StatusCode = 401;
                     await context.Response.WriteAsync("Invalid or expired refresh token.");
                     return;
                 }
 
-                var user = await userManager.Users.FirstOrDefaultAsync(u => u.Id == userToken.UserId);
+                if (stored.RevokedAtUtc is not null)
+                {
+                    var active = await dbContext.RefreshTokens
+                        .Where(t => t.UserId == stored.UserId && t.RevokedAtUtc == null)
+                        .ToListAsync();
+
+                    foreach (var t in active)
+                        t.RevokedAtUtc = DateTime.UtcNow;
+
+                    await dbContext.SaveChangesAsync();
+
+                    sw.Stop();
+                    _logger.LogWarning("Refresh token reuse detected for user {UserId}; active chain revoked in {Duration}ms",
+                        stored.UserId, sw.Elapsed.TotalMilliseconds);
+                    context.Response.StatusCode = 401;
+                    await context.Response.WriteAsync("Invalid or expired refresh token.");
+                    return;
+                }
+
+                if (DateTime.UtcNow >= stored.ExpiresAtUtc)
+                {
+                    sw.Stop();
+                    _logger.LogWarning("Expired refresh token attempt in {Duration}ms", sw.Elapsed.TotalMilliseconds);
+                    context.Response.StatusCode = 401;
+                    await context.Response.WriteAsync("Invalid or expired refresh token.");
+                    return;
+                }
+
+                var user = await userManager.Users.FirstOrDefaultAsync(u => u.Id == stored.UserId);
 
                 if (user == null || !user.Active)
                 {
@@ -145,7 +172,7 @@ namespace PackageDelivery.Api.Middleware
                 }
 
                 var identity = new ClaimsIdentity(new GenericIdentity(user.UserName!, "Token"));
-                var (accessToken, newRefreshToken) = await GenerateTokenPairAsync(user, identity, userManager);
+                var (accessToken, newRefreshToken) = await GenerateTokenPairAsync(user, identity, userManager, dbContext);
 
                 if (string.IsNullOrEmpty(accessToken))
                 {
@@ -154,6 +181,10 @@ namespace PackageDelivery.Api.Middleware
                     await context.Response.WriteAsync("Token generation failed.");
                     return;
                 }
+
+                stored.RevokedAtUtc = DateTime.UtcNow;
+                stored.ReplacedByTokenHash = RefreshTokenHasher.Hash(newRefreshToken);
+                await dbContext.SaveChangesAsync();
 
                 sw.Stop();
                 _logger.LogInformation("User {Username} token refreshed successfully in {Duration}ms",
@@ -175,7 +206,7 @@ namespace PackageDelivery.Api.Middleware
         }
 
         private async Task<(string accessToken, string refreshToken)> GenerateTokenPairAsync(
-            AspNetUser user, ClaimsIdentity identity, UserManager<AspNetUser> userManager)
+            AspNetUser user, ClaimsIdentity identity, UserManager<AspNetUser> userManager, PackageDeliveryDbContext dbContext)
         {
             var now = DateTime.UtcNow;
             var claims = new Claim[]
@@ -199,7 +230,14 @@ namespace PackageDelivery.Api.Middleware
             var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
             var refreshToken = GenerateRefreshToken();
 
-            await userManager.SetAuthenticationTokenAsync(user, "RefreshTokenProvider", "RefreshToken", refreshToken);
+            dbContext.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = user.Id,
+                TokenHash = RefreshTokenHasher.Hash(refreshToken),
+                CreatedAtUtc = DateTime.UtcNow,
+                ExpiresAtUtc = DateTime.UtcNow.Add(_options.RefreshTokenExpiration)
+            });
+            await dbContext.SaveChangesAsync();
 
             return (encodedJwt, refreshToken);
         }

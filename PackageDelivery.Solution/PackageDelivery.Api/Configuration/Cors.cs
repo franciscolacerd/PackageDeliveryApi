@@ -6,28 +6,21 @@ namespace PackageDelivery.Api.Configuration
     {
         public static void AddCorsPolicies(this IServiceCollection services, IConfiguration configuration)
         {
-            var baseUrl = configuration["BaseUrl:Uri"]?.TrimEnd('/') ?? string.Empty;
+            var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
             services.AddCors(options =>
             {
                 options.AddPolicy(Policies.CorsPolicy, builder =>
                 {
-                    if (!string.IsNullOrEmpty(baseUrl))
-                    {
-                        builder
-                            .WithOrigins(baseUrl)
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .SetPreflightMaxAge(TimeSpan.FromSeconds(2520));
-                    }
-                    else
-                    {
-                        builder
-                            .AllowAnyOrigin()
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .SetPreflightMaxAge(TimeSpan.FromSeconds(2520));
-                    }
+                    if (origins.Length == 0)
+                        return;
+
+                    builder
+                        .WithOrigins(origins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                        .SetPreflightMaxAge(TimeSpan.FromSeconds(2520));
                 });
             });
         }

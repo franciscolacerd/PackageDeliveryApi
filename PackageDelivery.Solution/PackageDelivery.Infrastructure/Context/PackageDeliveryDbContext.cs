@@ -33,6 +33,8 @@ public partial class PackageDeliveryDbContext : IdentityDbContext<
 
     public virtual DbSet<ApiRestLog> ApiRestLogs { get; set; }
 
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -250,6 +252,16 @@ public partial class PackageDeliveryDbContext : IdentityDbContext<
             entity.Property(e => e.Version)
                 .IsRowVersion()
                 .IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.TokenHash).HasMaxLength(88).IsRequired();
+            entity.Property(e => e.ReplacedByTokenHash).HasMaxLength(88);
         });
 
         OnModelCreatingPartial(modelBuilder);

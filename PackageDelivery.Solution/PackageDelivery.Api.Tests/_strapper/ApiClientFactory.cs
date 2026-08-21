@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace PackageDelivery.Api.Tests._strapper
 {
@@ -11,6 +13,9 @@ namespace PackageDelivery.Api.Tests._strapper
 
         public static string RootUrl => _config["ApiSettings:BaseUrl"]!;
         public static string BaseUrl => $"{RootUrl}/api";
+        public static string LoginUrl => $"{BaseUrl}/authentication/login";
+        public static string RefreshUrl => $"{BaseUrl}/authentication/refresh";
+        public static string AntiforgeryUrl => $"{BaseUrl}/authentication/antiforgery/token";
         private static string Username => _config["ApiSettings:Username"]!;
         private static string Password => _config["ApiSettings:Password"]!;
 
@@ -18,12 +23,10 @@ namespace PackageDelivery.Api.Tests._strapper
 
         public static HttpClient GetAnonymousClient() => CreateAnonymousClient();
 
-        public static FormUrlEncodedContent PasswordGrant() => new(new Dictionary<string, string>
-        {
-            ["grant_type"] = "password",
-            ["username"] = Username,
-            ["password"] = Password
-        });
+        public static HttpContent LoginContent() => LoginContent(Username, Password);
+
+        public static HttpContent LoginContent(string username, string password) =>
+            new StringContent(JsonSerializer.Serialize(new { username, password }), Encoding.UTF8, "application/json");
 
         public static async Task<HttpClient> CreateAuthenticatedClientAsync()
         {
@@ -47,7 +50,7 @@ namespace PackageDelivery.Api.Tests._strapper
                 using var handler = new HttpClientHandler { UseCookies = false };
                 using var bootstrap = new HttpClient(handler);
 
-                var response = await bootstrap.PostAsync($"{RootUrl}/token", PasswordGrant());
+                var response = await bootstrap.PostAsync(LoginUrl, LoginContent());
                 response.EnsureSuccessStatusCode();
 
                 var setCookies = response.Headers.TryGetValues("Set-Cookie", out var cookies)
@@ -55,7 +58,7 @@ namespace PackageDelivery.Api.Tests._strapper
                     : Enumerable.Empty<string>();
 
                 var accessCookie = setCookies.FirstOrDefault(c => c.StartsWith("access_token=", StringComparison.Ordinal))
-                    ?? throw new InvalidOperationException("The /token endpoint did not return the 'access_token' cookie.");
+                    ?? throw new InvalidOperationException("The login endpoint did not return the 'access_token' cookie.");
 
                 _cachedToken = accessCookie.Split(';')[0]["access_token=".Length..];
                 return _cachedToken;

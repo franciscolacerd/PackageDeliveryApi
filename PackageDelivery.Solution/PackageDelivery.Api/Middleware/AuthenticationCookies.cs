@@ -5,12 +5,15 @@
         public const string Access = "access_token";
         public const string Refresh = "refresh_token";
 
+        public const string AccessPath = "/";
+        public const string RefreshPath = "/api/authentication";
+
         public static CookieOptions AccessOptions(bool secure, DateTimeOffset expires) => new()
         {
             HttpOnly = true,
             Secure = secure,
             SameSite = SameSiteMode.Strict,
-            Path = "/",
+            Path = AccessPath,
             Expires = expires
         };
 
@@ -19,7 +22,7 @@
             HttpOnly = true,
             Secure = secure,
             SameSite = SameSiteMode.Strict,
-            Path = "/token",
+            Path = RefreshPath,
             Expires = expires
         };
     }

@@ -16,6 +16,7 @@ builder.AddServiceDefaults();
 builder.AddConfiguration();
 
 var tokenProviderOptions = Authentication.AddAuthentication(builder.Services, builder.Configuration);
+builder.Services.AddSingleton(tokenProviderOptions);
 
 builder.Services.AddPackageDeliveryServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -23,7 +24,7 @@ builder.Services.AddCorsPolicies(builder.Configuration);
 builder.Services.AddRateLimiting(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services
-    .AddControllers(options => options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()))
+    .AddControllersWithViews(options => options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()))
     .AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
 
 builder.Host.UseSerilog((ctx, lc) => lc
@@ -61,7 +62,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.UseRateLimiter();
-app.UseMiddleware<TokenProviderMiddleware>(Options.Create(tokenProviderOptions));
 
 app.UseExceptionMiddleware();
 app.MapHealthChecks();

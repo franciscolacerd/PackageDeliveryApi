@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using AwesomeAssertions;
 using PackageDelivery.Api.Tests._strapper;
 
@@ -26,7 +27,7 @@ namespace PackageDelivery.Api.Tests
 
         private static async Task<(HttpResponseMessage response, Dictionary<string, string> cookies)> LoginAsync(HttpClient client)
         {
-            var response = await client.PostAsync($"{ApiClientFactory.RootUrl}/token", ApiClientFactory.PasswordGrant());
+            var response = await client.PostAsync(ApiClientFactory.LoginUrl, ApiClientFactory.LoginContent());
             return (response, ParseSetCookies(response));
         }
 
@@ -37,21 +38,26 @@ namespace PackageDelivery.Api.Tests
             return request;
         }
 
-        private static HttpRequestMessage PostWithCookie(string url, string cookie)
+        private static HttpRequestMessage RefreshWith(string refreshCookie)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Add("Cookie", cookie);
+            var request = new HttpRequestMessage(HttpMethod.Post, ApiClientFactory.RefreshUrl);
+            request.Headers.Add("Cookie", $"refresh_token={refreshCookie}");
             return request;
         }
 
-        private static HttpRequestMessage RefreshWith(string refreshCookie)
+        private static async Task<(string token, string cookieHeader)> GetAntiforgeryAsync(HttpClient client, string accessCookie)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{ApiClientFactory.RootUrl}/token")
-            {
-                Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "refresh_token" })
-            };
-            request.Headers.Add("Cookie", $"refresh_token={refreshCookie}");
-            return request;
+            var request = new HttpRequestMessage(HttpMethod.Get, ApiClientFactory.AntiforgeryUrl);
+            request.Headers.Add("Cookie", $"access_token={accessCookie}");
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var jar = ParseSetCookies(response);
+            var cookieHeader = string.Join("; ", jar.Select(kv => $"{kv.Key}={kv.Value}"));
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            return (doc.RootElement.GetProperty("token").GetString()!, cookieHeader);
         }
 
         [Test]
@@ -74,7 +80,7 @@ namespace PackageDelivery.Api.Tests
                 && c.Contains("samesite=strict", StringComparison.OrdinalIgnoreCase));
             setCookies.Should().Contain(c =>
                 c.StartsWith("refresh_token=")
-                && c.Contains("path=/token", StringComparison.OrdinalIgnoreCase));
+                && c.Contains("path=/api/authentication", StringComparison.OrdinalIgnoreCase));
         }
 
         [Test]
@@ -129,8 +135,12 @@ namespace PackageDelivery.Api.Tests
 
             login.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-            var logout = await client.SendAsync(PostWithCookie(
-                $"{ApiClientFactory.BaseUrl}/authentication/logout", $"access_token={cookies["access_token"]}"));
+            var (csrfToken, antiforgeryCookies) = await GetAntiforgeryAsync(client, cookies["access_token"]);
+
+            var logoutRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiClientFactory.BaseUrl}/authentication/logout");
+            logoutRequest.Headers.Add("Cookie", $"access_token={cookies["access_token"]}; {antiforgeryCookies}");
+            logoutRequest.Headers.Add("X-CSRF-TOKEN", csrfToken);
+            var logout = await client.SendAsync(logoutRequest);
             logout.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
             var refreshAfterLogout = await client.SendAsync(RefreshWith(cookies["refresh_token"]));

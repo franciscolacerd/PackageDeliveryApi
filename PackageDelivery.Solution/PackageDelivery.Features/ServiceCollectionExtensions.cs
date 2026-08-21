@@ -5,6 +5,7 @@ using PackageDelivery.Features.Deliveries.CreateDelivery.Models;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Repositories;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Services;
 using PackageDelivery.Features.Deliveries.CreateDelivery.Validators;
+using PackageDelivery.Features.Authentication.Services;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Repositories;
 using PackageDelivery.Features.Deliveries.GetDeliveries.Services;
 using PackageDelivery.Shared.Settings;
@@ -33,6 +34,8 @@ namespace PackageDelivery.Features
             services.Configure<PagingSettings>(configuration.GetSection("PagingSettings"));
 
             services.AddHttpContextAccessor();
+
+            services.AddScoped<ITokenService, TokenService>();
 
             services.AddGetDeliveriesFeature();
             services.AddCreateDeliveryFeature();

@@ -3,20 +3,30 @@
 # Auth por cookies httpOnly → tem de ser HTTPS (7280). Sobre HTTP (5280) os cookies "Secure"
 # não são guardados/enviados. O cliente .http mantém os cookies entre pedidos, por isso o fluxo é:
 # 1) Login (define os cookies) → 2..) os pedidos seguintes vão autenticados pelo cookie access_token.
+# As mutações (criar delivery, logout) exigem o header X-CSRF-TOKEN (anti-forgery) — ver passo 3.
 
-### 1. Login (grant_type=password) → 204 No Content + Set-Cookie (access_token, refresh_token)
-POST {{PackageDelivery.Api_HostAddress}}/token
-Content-Type: application/x-www-form-urlencoded
+### 1. Login (JSON) → 204 No Content + Set-Cookie (access_token, refresh_token)
+POST {{PackageDelivery.Api_HostAddress}}/api/authentication/login
+Content-Type: application/json
 
-grant_type=password&username=customer@example.com&password=Password1!
+{
+  "username": "customer@example.com",
+  "password": "Password1!"
+}
 
 ### 2. Perfil do utilizador autenticado (usa o cookie access_token) → 200
 GET {{PackageDelivery.Api_HostAddress}}/api/authentication/account
 Accept: application/json
 
-### 3. Criar uma delivery (autenticado pelo cookie) → 200
+### 3. Obter o token anti-forgery (guarda o cookie __Host-csrf + devolve o request-token) → 200
+# @name antiforgery
+GET {{PackageDelivery.Api_HostAddress}}/api/authentication/antiforgery/token
+Accept: application/json
+
+### 4. Criar uma delivery (autenticado pelo cookie + X-CSRF-TOKEN) → 200
 POST {{PackageDelivery.Api_HostAddress}}/api/deliveries
 Content-Type: application/json
+X-CSRF-TOKEN: {{antiforgery.response.body.$.token}}
 
 {
   "details": {
@@ -40,20 +50,18 @@ Content-Type: application/json
   "attributes": { "pod": true, "sameDay": false, "cashOnDelivery": false }
 }
 
-### 4. As minhas deliveries (paginado, autenticado pelo cookie) → 200
+### 5. As minhas deliveries (paginado, autenticado pelo cookie) → 200
 GET {{PackageDelivery.Api_HostAddress}}/api/deliveries?page=1&pageSize=20
 Accept: application/json
 
-### 5. Refresh (o cookie refresh_token vai sozinho — Path=/token) → 204 + cookies novos
-POST {{PackageDelivery.Api_HostAddress}}/token
-Content-Type: application/x-www-form-urlencoded
+### 6. Refresh (o cookie refresh_token vai sozinho — Path=/api/authentication) → 204 + cookies novos
+POST {{PackageDelivery.Api_HostAddress}}/api/authentication/refresh
 
-grant_type=refresh_token
-
-### 6. Logout → 204 (remove o refresh da BD + apaga os dois cookies)
+### 7. Logout (autenticado pelo cookie + X-CSRF-TOKEN) → 204 (remove o refresh da BD + apaga os cookies)
 POST {{PackageDelivery.Api_HostAddress}}/api/authentication/logout
+X-CSRF-TOKEN: {{antiforgery.response.body.$.token}}
 
-### 7. Perfil DEPOIS do logout (sem cookie válido) → 401
+### 8. Perfil DEPOIS do logout (sem cookie válido) → 401
 GET {{PackageDelivery.Api_HostAddress}}/api/authentication/account
 Accept: application/json
 

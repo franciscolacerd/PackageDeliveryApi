@@ -4,7 +4,6 @@ namespace PackageDelivery.Shared.Models
 {
     public class TokenProviderOptions
     {
-        public string Path { get; set; } = "/token";
         public string Issuer { get; set; } = string.Empty;
         public string Audience { get; set; } = string.Empty;
         public TimeSpan Expiration { get; set; } = TimeSpan.FromMinutes(30);

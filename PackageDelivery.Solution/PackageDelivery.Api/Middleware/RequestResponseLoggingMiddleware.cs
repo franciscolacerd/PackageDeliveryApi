@@ -18,7 +18,7 @@ namespace PackageDelivery.Api.Middleware
 
         private static readonly HashSet<string> IgnoredPaths = new(StringComparer.OrdinalIgnoreCase)
         {
-            "/health", "/swagger", "/token"
+            "/health", "/swagger", "/api/authentication"
         };
 
         public RequestResponseLoggingMiddleware(

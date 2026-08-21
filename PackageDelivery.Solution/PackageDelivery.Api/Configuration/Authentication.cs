@@ -17,7 +17,6 @@ namespace PackageDelivery.Api.Configuration
 
             var tokenProviderOptions = new TokenProviderOptions
             {
-                Path = section["TokenPath"] ?? "/token",
                 Audience = section["Audience"] ?? string.Empty,
                 Issuer = section["Issuer"] ?? string.Empty,
                 SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha512),

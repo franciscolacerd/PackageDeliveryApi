@@ -33,7 +33,10 @@ namespace PackageDelivery.Features.Deliveries.CreateDelivery.Services
                 {
                     Success = false,
                     Message = "Delivery was not created due to validation errors.",
-                    Errors = validation.Errors.Select(e => e.ErrorMessage).ToList()
+                    Errors = validation.Errors.Select(e => e.ErrorMessage).ToList(),
+                    ValidationErrors = validation.Errors
+                          .GroupBy(e => e.PropertyName)
+                          .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())
                 };
             }
 

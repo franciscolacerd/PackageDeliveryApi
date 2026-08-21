@@ -58,11 +58,11 @@ namespace PackageDelivery.Api.Controllers
         /// </remarks>
         /// <response code="200">Delivery created. The response carries the generated barcode.</response>
         /// <response code="401">Missing or invalid bearer token.</response>
-        /// <response code="422">Validation failed. The response lists the error messages in <c>errors</c>.</response>
+        /// <response code="422">Validation failed. Returns a <c>ValidationProblemDetails</c> with the validation failures keyed by field in <c>errors</c>.</response>
         [HttpPost]
         [ProducesResponseType(typeof(CreateDeliveryResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(CreateDeliveryResponse), StatusCodes.Status422UnprocessableEntity)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
         public async Task<ActionResult<CreateDeliveryResponse>> CreateDeliveryAsync(
             [FromBody] CreateDeliveryRequest request,
             CancellationToken cancellationToken)
@@ -70,7 +70,14 @@ namespace PackageDelivery.Api.Controllers
             var result = await _createDeliveryService.CreateAsync(request, CurrentUserId, cancellationToken);
 
             if (!result.Success)
-                return UnprocessableEntity(result);
+            {
+                var problemDetails = new ValidationProblemDetails(result.ValidationErrors)
+                {
+                    Status = StatusCodes.Status422UnprocessableEntity,
+                    Title = "One or more validation errors occurred."
+                };
+                return UnprocessableEntity(problemDetails);
+            }
 
             return Ok(result);
         }

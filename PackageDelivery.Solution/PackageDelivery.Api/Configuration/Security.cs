@@ -4,45 +4,43 @@ namespace PackageDelivery.Api.Configuration
 {
     public static class Security
     {
-        public static IServiceCollection AddSecurity(this IServiceCollection services)
-        {
-            services.AddHsts(options =>
-            {
-                options.Preload = true;
-                options.IncludeSubDomains = true;
-                options.MaxAge = TimeSpan.FromDays(365);
-            });
-
-            return services;
-        }
+        public static IServiceCollection AddSecurity(this IServiceCollection services) => services;
 
         public static IApplicationBuilder UseSecurity(this IApplicationBuilder app)
         {
-            app.UseXRobotsTag(options => options.NoIndex().NoFollow());
-            app.UseXDownloadOptions();
-            app.UseXContentTypeOptions();
-            app.UseXXssProtection(options => options.EnabledWithBlockMode());
-            app.UseXfo(options => options.SameOrigin());
-            app.UseHsts(options => options.MaxAge(days: 365).IncludeSubdomains().Preload());
-            app.UseReferrerPolicy(opts => opts.NoReferrer());
+            var policies = new HeaderPolicyCollection()
+                .AddFrameOptionsSameOrigin()
+                .AddContentTypeOptionsNoSniff()
+                .AddReferrerPolicyNoReferrer()
+                .RemoveServerHeader()
+                .AddStrictTransportSecurityMaxAgeIncludeSubDomainsAndPreload(maxAgeInSeconds: 60 * 60 * 24 * 365)
+                .AddContentSecurityPolicy(builder =>
+                {
+                    builder.AddDefaultSrc().Self();
+                    builder.AddObjectSrc().None();
+                    builder.AddFrameAncestors().Self();
+                })
+                .AddCustomHeader("X-XSS-Protection", "0")
+                .AddCustomHeader("X-Robots-Tag", "noindex, nofollow");
+
+            app.UseSecurityHeaders(policies);
 
             app.UseStaticFiles(new StaticFileOptions
             {
                 OnPrepareResponse = ctx =>
                 {
-                    if (ctx.File.Name.EndsWith(".css") || ctx.File.Name.EndsWith(".js") ||
-                        ctx.File.Name.EndsWith(".png") || ctx.File.Name.EndsWith(".jpg"))
+                    var name = ctx.File.Name;
+                    if (name.EndsWith(".css") || name.EndsWith(".js") ||
+                        name.EndsWith(".png") || name.EndsWith(".jpg"))
                     {
                         ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "public, max-age=31536000");
                     }
                     else
                     {
-                        app.UseNoCacheHttpHeaders();
+                        ctx.Context.Response.Headers.Append(HeaderNames.CacheControl, "no-store, no-cache, must-revalidate");
                     }
                 }
             });
-
-            app.UseRedirectValidation();
 
             return app;
         }

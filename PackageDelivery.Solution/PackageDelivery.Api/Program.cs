@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using PackageDelivery.Api.Configuration;
 using PackageDelivery.Api.Middleware;
 using PackageDelivery.Features;
@@ -33,9 +32,9 @@ builder.Host.UseSerilog((ctx, lc) => lc
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.UseHealthChecks<PackageDeliveryDbContext>(builder.Configuration);
 builder.Services.AddSwagger();
-builder.Services.AddSecurity();
 builder.Services.AddAntiforgeryProtection();
-builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
@@ -46,27 +45,19 @@ if (app.Configuration.GetValue<bool>("RunMigrations"))
     await db.Database.MigrateAsync();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
 app.UseSwagger();
 app.UseSwaggerUIConfig();
-
 app.UseApiLoggingMiddleware();
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseExceptionHandler();
 app.UseCors(Policies.CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.UseRateLimiter();
-
-app.UseExceptionMiddleware();
 app.MapHealthChecks();
 app.UseSecurity();
-
 app.MapControllers();
 
 await app.RunAsync();

@@ -1,20 +1,19 @@
 namespace PackageDelivery.Shared.Models
 {
-    public class OperationResponse : IOperationResponse
+    public abstract class OperationResponse : IOperationResponse
     {
-        public bool Success { get; private set; }
-        public List<string> Errors { get; private set; } = new();
-        public string? Message { get; private set; }
+        /// <summary>True when the operation succeeded; false when it failed.</summary>
+        /// <example>true</example>
+        public bool Success { get; set; }
 
-        private OperationResponse() { }
+        /// <summary>Human-readable outcome message.</summary>
+        /// <example>Delivery created.</example>
+        public string? Message { get; set; }
 
-        public static OperationResponse WasSuccess(string? message = null) =>
-            new() { Success = true, Errors = new List<string>(), Message = message };
+        /// <summary>Flat list of error messages. Empty when <see cref="Success"/> is true.</summary>
+        public List<string> Errors { get; set; } = new();
 
-        public static OperationResponse WasFailure(string error) =>
-            new() { Success = false, Errors = new List<string> { error }, Message = null };
-
-        public static OperationResponse WasFailure(List<string> errors) =>
-            new() { Success = false, Errors = errors, Message = null };
+        /// <summary>Validation failures keyed by field. Empty when <see cref="Success"/> is true.</summary>
+        public IDictionary<string, string[]> ValidationErrors { get; set; } = new Dictionary<string, string[]>();
     }
 }

@@ -22,12 +22,14 @@ namespace PackageDelivery.Api.Configuration
 
             SetJsonExample(operation, "422", new JsonObject
             {
-                ["success"] = false,
-                ["barCode"] = null,
-                ["message"] = "Delivery was not created due to validation errors.",
-                ["errors"] = new JsonArray(
-                    "'Details.NumberOfVolumes' must be greater than '0'.",
-                    "'Sender.Address.ZipCode' must be valid.")
+                ["type"] = "https://tools.ietf.org/html/rfc4918#section-11.2",
+                ["title"] = "One or more validation errors occurred.",
+                ["status"] = 422,
+                ["errors"] = new JsonObject
+                {
+                    ["Details.NumberOfVolumes"] = new JsonArray("'Details.NumberOfVolumes' must be greater than '0'."),
+                    ["Sender.Address.ZipCode"] = new JsonArray("'Sender.Address.ZipCode' must be valid.")
+                }
             });
         }
 
